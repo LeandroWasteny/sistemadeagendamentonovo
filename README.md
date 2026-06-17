@@ -16,7 +16,7 @@ MVP dockerizado de agendamento online com tela publica, painel admin, PostgreSQL
 docker compose up --build
 ```
 
-O app fica em `http://localhost:3000`.
+O app fica em `http://localhost:3020`.
 
 Credenciais iniciais do admin:
 
@@ -35,13 +35,12 @@ Credenciais iniciais do admin:
 
 ## WhatsApp
 
-Por padrao o sistema usa `WHATSAPP_MODE=mock`, imprimindo as mensagens no log do app.
+Por padrao o Docker usa `WHATSAPP_MODE=baileys` e o QR Code fica disponivel no admin em `/admin/whatsapp`.
 
-Para tentar envio real com Baileys, configure:
+Para usar apenas logs, configure:
 
 ```env
-WHATSAPP_MODE=baileys
-WHATSAPP_AUTH_DIR=/app/baileys-auth
+WHATSAPP_MODE=mock
 ```
 
-No primeiro uso, o Baileys pode exigir leitura do QR Code exibido no terminal do container.
+No primeiro uso com Baileys, entre no admin, abra `WhatsApp`, clique em conectar e leia o QR Code pelo WhatsApp em aparelhos conectados.

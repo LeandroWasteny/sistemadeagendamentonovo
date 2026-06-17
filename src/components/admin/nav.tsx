@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { CalendarDays, Clock, Home, Scissors, Users } from "lucide-react";
+import { CalendarDays, Clock, Home, MessageCircle, Scissors, Users } from "lucide-react";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: Home },
   { href: "/admin/servicos", label: "Servicos", icon: Scissors },
   { href: "/admin/profissionais", label: "Profissionais", icon: Users },
   { href: "/admin/horarios", label: "Horarios", icon: Clock },
-  { href: "/admin/agendamentos", label: "Agendamentos", icon: CalendarDays }
+  { href: "/admin/agendamentos", label: "Agendamentos", icon: CalendarDays },
+  { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle }
 ];
 
 export function AdminNav() {
@@ -34,4 +35,3 @@ export function AdminNav() {
     </aside>
   );
 }
-

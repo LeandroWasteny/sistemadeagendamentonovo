@@ -22,15 +22,15 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://agendamento:agendamento@postgres:5432/agendamento?schema=public
-      APP_URL: http://localhost:3000
+      APP_URL: http://localhost:3020
       ADMIN_EMAIL: admin@agendamento.local
       ADMIN_PASSWORD: admin123
       SESSION_SECRET: troque-este-segredo-em-producao
-      WHATSAPP_MODE: mock
+      WHATSAPP_MODE: baileys
       WHATSAPP_AUTH_DIR: /app/baileys-auth
       DEFAULT_COUNTRY_CODE: "55"
     ports:
-      - "3000:3000"
+      - "3020:3020"
     volumes:
       - baileys_auth:/app/baileys-auth
     command: sh -c "npx prisma migrate deploy && npm run db:seed && npm start"
