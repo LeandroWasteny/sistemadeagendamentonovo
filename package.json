@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@prisma/client": "latest",
+    "@prisma/adapter-pg": "latest",
     "bcryptjs": "latest",
     "baileys": "latest",
     "class-variance-authority": "latest",
@@ -23,6 +24,7 @@
     "next": "latest",
     "next-themes": "latest",
     "pino": "latest",
+    "pg": "latest",
     "prisma": "latest",
     "qrcode": "latest",
     "react": "latest",
@@ -35,6 +37,7 @@
     "@tailwindcss/postcss": "latest",
     "@types/bcryptjs": "latest",
     "@types/node": "latest",
+    "@types/pg": "latest",
     "@types/qrcode": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
