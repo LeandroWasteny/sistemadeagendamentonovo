@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: agendamento
+      POSTGRES_USER: agendamento
+      POSTGRES_PASSWORD: agendamento
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agendamento -d agendamento"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://agendamento:agendamento@postgres:5432/agendamento?schema=public
+      APP_URL: http://localhost:3000
+      ADMIN_EMAIL: admin@agendamento.local
+      ADMIN_PASSWORD: admin123
+      SESSION_SECRET: troque-este-segredo-em-producao
+      WHATSAPP_MODE: mock
+      WHATSAPP_AUTH_DIR: /app/baileys-auth
+      DEFAULT_COUNTRY_CODE: "55"
+    ports:
+      - "3000:3000"
+    volumes:
+      - baileys_auth:/app/baileys-auth
+    command: sh -c "npx prisma migrate deploy && npm run db:seed && npm start"
+
+volumes:
+  postgres_data:
+  baileys_auth:
