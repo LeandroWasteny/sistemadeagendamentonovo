@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Service {
+  id              String        @id @default(cuid())
+  name            String
+  description     String
+  durationMinutes Int
+  priceCents      Int
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  appointments    Appointment[]
+}
+
+model Professional {
+  id             String                 @id @default(cuid())
+  name           String
+  phone          String
+  specialties    String
+  active         Boolean                @default(true)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  schedules      ProfessionalSchedule[]
+  appointments   Appointment[]
+}
+
+model ProfessionalSchedule {
+  id               String       @id @default(cuid())
+  professionalId   String
+  dayOfWeek        Int
+  startTime        String
+  endTime          String
+  intervalMinutes  Int          @default(30)
+  active           Boolean      @default(true)
+  professional     Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([professionalId, dayOfWeek, startTime, endTime])
+}
+
+model Appointment {
+  id             String            @id @default(cuid())
+  clientName     String
+  clientPhone    String
+  notes          String?
+  startsAt       DateTime
+  endsAt         DateTime
+  status         AppointmentStatus @default(PENDING)
+  serviceId      String
+  professionalId String
+  service        Service           @relation(fields: [serviceId], references: [id])
+  professional   Professional      @relation(fields: [professionalId], references: [id])
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([professionalId, startsAt])
+}
+
+model WhatsappSession {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  status    String   @default("DISCONNECTED")
+  qrCode    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
