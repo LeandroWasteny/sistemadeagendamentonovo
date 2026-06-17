@@ -1,15 +1,9 @@
 import pino from "pino";
 import QRCode from "qrcode";
+import type makeWASocket from "baileys";
 import type { WhatsappMessage } from "./templates";
 
-type BaileysSocket = {
-  ev: {
-    on: (event: string, listener: (...args: never[]) => void) => void;
-  };
-  sendMessage: (jid: string, content: { text: string }) => Promise<unknown>;
-  logout: () => Promise<void>;
-  end?: (error?: Error) => void;
-};
+type BaileysSocket = ReturnType<typeof makeWASocket>;
 
 type WhatsappConnectionState = {
   status: "DISCONNECTED" | "CONNECTING" | "QR_READY" | "CONNECTED" | "ERROR";
@@ -72,17 +66,11 @@ export async function startWhatsappConnection() {
     auth: state,
     logger: pino({ level: "silent" }),
     printQRInTerminal: false
-  }) as BaileysSocket;
+  });
 
   baileysGlobal.baileysSocket = socket;
-  socket.ev.on("creds.update", saveCreds as (...args: never[]) => void);
-  socket.ev.on("connection.update", async (update: never) => {
-    const connectionUpdate = update as {
-      connection?: string;
-      qr?: string;
-      lastDisconnect?: { error?: { message?: string } };
-    };
-
+  socket.ev.on("creds.update", saveCreds);
+  socket.ev.on("connection.update", async (connectionUpdate) => {
     if (connectionUpdate.qr) {
       setState({
         status: "QR_READY",
@@ -126,7 +114,8 @@ export async function stopWhatsappConnection() {
   baileysGlobal.baileysSocket = undefined;
   if (socket) {
     await socket.logout().catch(() => undefined);
-    socket.end?.();
+    const closableSocket = socket as unknown as { end?: (error?: Error) => void };
+    closableSocket.end?.();
   }
   setState({
     status: "DISCONNECTED",
