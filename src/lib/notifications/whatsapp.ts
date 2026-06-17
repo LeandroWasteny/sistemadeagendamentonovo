@@ -14,8 +14,14 @@ export async function sendAppointmentNotifications(messages: {
   client: WhatsappMessage;
   professional: WhatsappMessage;
 }) {
-  await Promise.all([
+  const results = await Promise.allSettled([
     sendWhatsappMessage(messages.client),
     sendWhatsappMessage(messages.professional)
   ]);
+
+  const failed = results.find((result) => result.status === "rejected");
+  if (failed?.status === "rejected") {
+    console.error("[whatsapp] falha ao enviar notificacao:", failed.reason);
+    throw failed.reason;
+  }
 }

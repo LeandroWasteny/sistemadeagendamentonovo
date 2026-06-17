@@ -127,14 +127,55 @@ export async function stopWhatsappConnection() {
 }
 
 export async function sendWithBaileys(message: WhatsappMessage) {
-  await startWhatsappConnection();
-  const socket = baileysGlobal.baileysSocket;
-  const state = getState();
+  const socket = await waitForConnectedSocket();
+  const jid = await resolveRecipientJid(socket, message.to);
+  const result = await socket.sendMessage(jid, { text: message.text });
 
-  if (!socket || state.status !== "CONNECTED") {
-    throw new Error("WhatsApp ainda nao esta conectado. Gere e leia o QR Code no admin.");
+  console.log(`[whatsapp:baileys] mensagem enviada para ${maskPhone(message.to)} (${jid})`);
+  return { ok: true, mode: "baileys", jid, messageId: result?.key?.id };
+}
+
+async function waitForConnectedSocket(timeoutMs = 20000) {
+  await startWhatsappConnection();
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const socket = baileysGlobal.baileysSocket;
+    if (socket && getState().status === "CONNECTED") {
+      return socket;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  await socket.sendMessage(`${message.to}@s.whatsapp.net`, { text: message.text });
-  return { ok: true, mode: "baileys" };
+  throw new Error("WhatsApp ainda nao esta conectado. Gere e leia o QR Code no admin.");
+}
+
+async function resolveRecipientJid(socket: BaileysSocket, phone: string) {
+  const candidates = buildBrazilPhoneCandidates(phone);
+
+  for (const candidate of candidates) {
+    const [result] = (await socket.onWhatsApp(candidate)) ?? [];
+    if (result?.exists && result.jid) {
+      return result.jid;
+    }
+  }
+
+  throw new Error(`Numero ${maskPhone(phone)} nao encontrado no WhatsApp.`);
+}
+
+function buildBrazilPhoneCandidates(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const candidates = [digits];
+
+  if (digits.startsWith("55") && digits.length === 13 && digits[4] === "9") {
+    candidates.push(`${digits.slice(0, 4)}${digits.slice(5)}`);
+  }
+
+  return [...new Set(candidates)];
+}
+
+function maskPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length <= 4) return "****";
+  return `${digits.slice(0, 4)}****${digits.slice(-2)}`;
 }
