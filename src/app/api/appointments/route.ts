@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { calculateAvailableSlots } from "@/lib/availability";
+import { createNotificationLogs } from "@/lib/notifications/logs";
 import { buildAppointmentMessages } from "@/lib/notifications/templates";
 import { sendAppointmentNotifications } from "@/lib/notifications/whatsapp";
 import { prisma } from "@/lib/prisma";
@@ -69,18 +70,21 @@ export async function POST(request: Request) {
     }
   });
 
-  await sendAppointmentNotifications(
-    buildAppointmentMessages({
-      clientName: appointment.clientName,
-      clientPhone: appointment.clientPhone,
-      professionalName: professional.name,
-      professionalPhone: professional.phone,
-      serviceName: service.name,
-      startsAt: appointment.startsAt,
-      status: appointment.status
-    })
-  );
+  const messages = buildAppointmentMessages({
+    clientName: appointment.clientName,
+    clientPhone: appointment.clientPhone,
+    professionalName: professional.name,
+    professionalPhone: professional.phone,
+    serviceName: service.name,
+    startsAt: appointment.startsAt,
+    status: appointment.status
+  });
+  const notifications = await sendAppointmentNotifications(messages);
+  await createNotificationLogs({
+    appointmentId: appointment.id,
+    messages,
+    results: notifications
+  });
 
-  return NextResponse.json({ appointment });
+  return NextResponse.json({ appointment, notifications });
 }
-

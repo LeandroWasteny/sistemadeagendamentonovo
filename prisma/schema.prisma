@@ -13,6 +13,16 @@ enum AppointmentStatus {
   COMPLETED
 }
 
+enum NotificationTarget {
+  CLIENT
+  PROFESSIONAL
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -73,10 +83,27 @@ model Appointment {
   professionalId String
   service        Service           @relation(fields: [serviceId], references: [id])
   professional   Professional      @relation(fields: [professionalId], references: [id])
+  notifications  NotificationLog[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
   @@index([professionalId, startsAt])
+}
+
+model NotificationLog {
+  id                String             @id @default(cuid())
+  appointmentId     String
+  appointment       Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  target            NotificationTarget
+  status            NotificationStatus
+  channel           String             @default("WHATSAPP")
+  destination       String
+  message           String
+  providerMessageId String?
+  error             String?
+  createdAt         DateTime           @default(now())
+
+  @@index([appointmentId, createdAt])
 }
 
 model WhatsappSession {

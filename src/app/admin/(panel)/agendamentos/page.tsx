@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { Button } from "@/components/ui/button";
+import { createNotificationLogs } from "@/lib/notifications/logs";
 import { buildAppointmentMessages } from "@/lib/notifications/templates";
 import { sendAppointmentNotifications } from "@/lib/notifications/whatsapp";
 import { prisma } from "@/lib/prisma";
@@ -15,25 +16,62 @@ async function updateAppointmentStatus(formData: FormData) {
     include: { service: true, professional: true }
   });
 
-  await sendAppointmentNotifications(
-    buildAppointmentMessages({
-      clientName: appointment.clientName,
-      clientPhone: appointment.clientPhone,
-      professionalName: appointment.professional.name,
-      professionalPhone: appointment.professional.phone,
-      serviceName: appointment.service.name,
-      startsAt: appointment.startsAt,
-      status: appointment.status
-    })
-  );
+  await notifyAppointment(appointment);
 
   revalidatePath("/admin/agendamentos");
   revalidatePath("/admin");
 }
 
+async function resendAppointmentNotifications(formData: FormData) {
+  "use server";
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: String(formData.get("id")) },
+    include: { service: true, professional: true }
+  });
+
+  if (appointment) {
+    await notifyAppointment(appointment);
+  }
+
+  revalidatePath("/admin/agendamentos");
+}
+
+async function notifyAppointment(appointment: {
+  id: string;
+  clientName: string;
+  clientPhone: string;
+  startsAt: Date;
+  status: string;
+  service: { name: string };
+  professional: { name: string; phone: string };
+}) {
+  const messages = buildAppointmentMessages({
+    clientName: appointment.clientName,
+    clientPhone: appointment.clientPhone,
+    professionalName: appointment.professional.name,
+    professionalPhone: appointment.professional.phone,
+    serviceName: appointment.service.name,
+    startsAt: appointment.startsAt,
+    status: appointment.status
+  });
+  const results = await sendAppointmentNotifications(messages);
+  await createNotificationLogs({
+    appointmentId: appointment.id,
+    messages,
+    results
+  });
+}
+
 export default async function AppointmentsPage() {
   const appointments = await prisma.appointment.findMany({
-    include: { service: true, professional: true },
+    include: {
+      service: true,
+      professional: true,
+      notifications: {
+        orderBy: { createdAt: "desc" },
+        take: 4
+      }
+    },
     orderBy: { startsAt: "desc" }
   });
 
@@ -54,6 +92,18 @@ export default async function AppointmentsPage() {
                 </p>
                 <p className="text-sm text-zinc-500">WhatsApp: {appointment.clientPhone} - Status: {statusLabel(appointment.status)}</p>
                 {appointment.notes && <p className="mt-1 text-sm text-zinc-600">{appointment.notes}</p>}
+                <div className="mt-3 space-y-1">
+                  {appointment.notifications.length === 0 ? (
+                    <p className="text-xs text-zinc-400">Nenhuma tentativa de notificacao registrada.</p>
+                  ) : (
+                    appointment.notifications.map((notification) => (
+                      <p key={notification.id} className="text-xs text-zinc-500">
+                        {notification.target === "CLIENT" ? "Cliente" : "Profissional"}: {notification.status === "SENT" ? "enviado" : "falhou"}
+                        {notification.error ? ` - ${notification.error}` : ""}
+                      </p>
+                    ))
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 {["CONFIRMED", "CANCELLED", "COMPLETED"].map((status) => (
@@ -65,6 +115,10 @@ export default async function AppointmentsPage() {
                     </Button>
                   </form>
                 ))}
+                <form action={resendAppointmentNotifications}>
+                  <input type="hidden" name="id" value={appointment.id} />
+                  <Button variant="secondary">Reenviar WhatsApp</Button>
+                </form>
               </div>
             </div>
           ))}

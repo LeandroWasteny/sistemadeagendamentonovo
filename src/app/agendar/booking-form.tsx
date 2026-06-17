@@ -75,7 +75,16 @@ export function BookingForm({
     });
     const data = await response.json();
     setSaving(false);
-    setMessage(response.ok ? "Agendamento criado e notificacoes enviadas." : data.error);
+    if (response.ok) {
+      const failedNotifications = data.notifications?.filter((item: { ok: boolean }) => !item.ok) ?? [];
+      setMessage(
+        failedNotifications.length > 0
+          ? "Agendamento criado, mas alguma notificacao do WhatsApp falhou. A equipe pode reenviar pelo admin."
+          : "Agendamento criado e notificacoes enviadas."
+      );
+    } else {
+      setMessage(data.error);
+    }
     if (response.ok) setSlot("");
   }
 
@@ -166,4 +175,3 @@ export function BookingForm({
     </form>
   );
 }
-
