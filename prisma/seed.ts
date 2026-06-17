@@ -1,7 +1,14 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString:
+    process.env.DATABASE_URL ??
+    "postgresql://agendamento:agendamento@localhost:5432/agendamento?schema=public"
+});
+
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? "admin@agendamento.local";
@@ -73,4 +80,3 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
-
