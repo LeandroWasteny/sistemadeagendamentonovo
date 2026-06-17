@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 const days = [
   { value: 0, label: "Domingo" },
   { value: 1, label: "Segunda" },
@@ -94,4 +96,3 @@ export default async function SchedulesPage() {
     </section>
   );
 }
-

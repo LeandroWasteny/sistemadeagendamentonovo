@@ -5,6 +5,8 @@ import { sendAppointmentNotifications } from "@/lib/notifications/whatsapp";
 import { prisma } from "@/lib/prisma";
 import { statusLabel } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 async function updateAppointmentStatus(formData: FormData) {
   "use server";
   const appointment = await prisma.appointment.update({
@@ -72,4 +74,3 @@ export default async function AppointmentsPage() {
     </section>
   );
 }
-

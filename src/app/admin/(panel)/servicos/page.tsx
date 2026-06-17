@@ -5,6 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 async function createService(formData: FormData) {
   "use server";
   await prisma.service.create({

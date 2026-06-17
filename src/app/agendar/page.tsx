@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { BookingForm } from "./booking-form";
 
+export const dynamic = "force-dynamic";
+
 export default async function BookingPage() {
   const [services, professionals] = await Promise.all([
     prisma.service.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
@@ -36,4 +38,3 @@ export default async function BookingPage() {
     </main>
   );
 }
-

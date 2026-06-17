@@ -2,6 +2,8 @@ import Link from "next/link";
 import { CalendarCheck, Clock, Scissors, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboard() {
   const [services, professionals, pending, confirmed] = await Promise.all([
     prisma.service.count(),
@@ -36,4 +38,3 @@ export default async function AdminDashboard() {
     </section>
   );
 }
-

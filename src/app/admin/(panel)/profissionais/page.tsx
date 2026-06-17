@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 async function createProfessional(formData: FormData) {
   "use server";
   await prisma.professional.create({
