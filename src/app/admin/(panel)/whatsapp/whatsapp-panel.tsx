@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Plug, RefreshCw, RotateCcw, Send, Unplug } from "lucide-react";
+import { Loader2, Plug, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 
 type WhatsappState = {
   status: "DISCONNECTED" | "CONNECTING" | "QR_READY" | "CONNECTED" | "ERROR";
@@ -17,7 +15,6 @@ type WhatsappState = {
 export function WhatsappPanel() {
   const [state, setState] = useState<WhatsappState | null>(null);
   const [loading, setLoading] = useState(false);
-  const [testResult, setTestResult] = useState("");
 
   async function loadStatus() {
     try {
@@ -41,37 +38,8 @@ export function WhatsappPanel() {
   async function disconnect() {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/whatsapp?logout=true", { method: "DELETE" });
-      setState(await response.json());
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function resetSession() {
-    setLoading(true);
-    try {
       const response = await fetch("/api/admin/whatsapp", { method: "DELETE" });
       setState(await response.json());
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function sendTest(formData: FormData) {
-    setTestResult("");
-    setLoading(true);
-    try {
-      const response = await fetch("/api/admin/whatsapp/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: formData.get("phone"),
-          text: formData.get("text")
-        })
-      });
-      const data = await response.json();
-      setTestResult(response.ok ? "Mensagem de teste enviada." : data.error);
     } finally {
       setLoading(false);
     }
@@ -101,21 +69,13 @@ export function WhatsappPanel() {
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
             Conectar
           </Button>
-          <Button variant="secondary" className="gap-2" onClick={loadStatus}>
-            <RefreshCw className="h-4 w-4" />
-            Atualizar
-          </Button>
           <Button variant="danger" className="gap-2" onClick={disconnect} disabled={loading}>
             <Unplug className="h-4 w-4" />
             Desconectar
           </Button>
-          <Button variant="secondary" className="gap-2" onClick={resetSession} disabled={loading}>
-            <RotateCcw className="h-4 w-4" />
-            Nova sessao
-          </Button>
         </div>
         <p className="mt-3 text-xs leading-5 text-zinc-500">
-          Desconectar tenta remover este sistema da lista de aparelhos conectados no celular. Nova sessao apenas limpa a sessao local para gerar outro QR Code.
+          Desconectar remove a sessao local e tenta remover este sistema da lista de aparelhos conectados no celular.
         </p>
       </div>
 
@@ -132,25 +92,6 @@ export function WhatsappPanel() {
           </p>
         )}
       </div>
-
-      <form action={sendTest} className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm lg:col-span-2">
-        <h2 className="text-xl font-semibold">Mensagem de teste</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-[220px_1fr_auto] md:items-end">
-          <label className="space-y-1 text-sm font-medium">
-            WhatsApp
-            <Input name="phone" placeholder="85999990000" required />
-          </label>
-          <label className="space-y-1 text-sm font-medium">
-            Mensagem
-            <Textarea name="text" defaultValue="Teste do sistema de agendamento." required />
-          </label>
-          <Button className="gap-2" disabled={loading || status !== "CONNECTED"}>
-            <Send className="h-4 w-4" />
-            Enviar teste
-          </Button>
-        </div>
-        {testResult && <p className="mt-3 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700">{testResult}</p>}
-      </form>
     </div>
   );
 }

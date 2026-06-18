@@ -3,9 +3,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import {
   getWhatsappConnectionState,
   logoutWhatsappDevice,
-  resetWhatsappConnection,
-  startWhatsappConnection,
-  stopWhatsappConnection
+  startWhatsappConnection
 } from "@/lib/notifications/baileys-manager";
 
 export async function GET() {
@@ -18,14 +16,7 @@ export async function POST() {
   return NextResponse.json(await startWhatsappConnection());
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE() {
   await requireAdmin();
-  const { searchParams } = new URL(request.url);
-  if (searchParams.get("logout") === "true") {
-    return NextResponse.json(await logoutWhatsappDevice());
-  }
-  if (searchParams.get("keepSession") !== "true") {
-    return NextResponse.json(await resetWhatsappConnection());
-  }
-  return NextResponse.json(await stopWhatsappConnection());
+  return NextResponse.json(await logoutWhatsappDevice());
 }
