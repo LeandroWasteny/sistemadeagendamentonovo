@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { calculateAvailableSlots } from "@/lib/availability";
 import { createNotificationLogs } from "@/lib/notifications/logs";
@@ -104,6 +105,10 @@ export async function POST(request: Request) {
     messages,
     results: notifications
   });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/agendamentos");
+  revalidatePath("/admin/relatorios");
 
   return NextResponse.json({ appointment, notifications });
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarDays, Clock, Home, LogOut, MessageCircle, Scissors, Users } from "lucide-react";
+import { BarChart3, CalendarDays, Clock, Home, LogOut, MessageCircle, Scissors, Users } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { destroySession } from "@/lib/auth/session";
 
@@ -10,6 +10,7 @@ const links = [
   { href: "/admin/profissionais", label: "Profissionais", icon: Users },
   { href: "/admin/horarios", label: "Horarios", icon: Clock },
   { href: "/admin/agendamentos", label: "Agendamentos", icon: CalendarDays },
+  { href: "/admin/relatorios", label: "Relatorios", icon: BarChart3 },
   { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle }
 ];
 

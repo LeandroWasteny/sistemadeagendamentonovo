@@ -20,6 +20,7 @@ async function updateAppointmentStatus(formData: FormData) {
 
   revalidatePath("/admin/agendamentos");
   revalidatePath("/admin");
+  revalidatePath("/admin/relatorios");
 }
 
 async function resendAppointmentNotifications(formData: FormData) {
@@ -34,6 +35,7 @@ async function resendAppointmentNotifications(formData: FormData) {
   }
 
   revalidatePath("/admin/agendamentos");
+  revalidatePath("/admin/relatorios");
 }
 
 async function notifyAppointment(appointment: {

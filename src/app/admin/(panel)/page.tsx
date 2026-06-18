@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarCheck, Clock, Scissors, TrendingUp, Users } from "lucide-react";
+import { BarChart3, CalendarCheck, Clock, Scissors, TrendingUp, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,8 @@ export default async function AdminDashboard() {
     { label: "Servicos", value: services, href: "/admin/servicos", icon: Scissors, tone: "blue" },
     { label: "Profissionais", value: professionals, href: "/admin/profissionais", icon: Users, tone: "sky" },
     { label: "Pendentes", value: pending, href: "/admin/agendamentos", icon: Clock, tone: "amber" },
-    { label: "Confirmados", value: confirmed, href: "/admin/agendamentos", icon: CalendarCheck, tone: "green" }
+    { label: "Confirmados", value: confirmed, href: "/admin/agendamentos", icon: CalendarCheck, tone: "green" },
+    { label: "Relatorios", value: "", href: "/admin/relatorios", icon: BarChart3, tone: "blue" }
   ];
 
   return (
@@ -35,7 +36,7 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-4">
+      <div className="mt-6 grid gap-4 md:grid-cols-5">
         {cards.map((card) => {
           const Icon = card.icon;
           const toneClass =
