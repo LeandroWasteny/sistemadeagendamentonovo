@@ -64,6 +64,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
   const { theme, setTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [loadedPreference, setLoadedPreference] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -80,30 +81,28 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
 
   useEffect(() => {
     setMobileOpen(false);
+    setThemeMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    if (!mobileOpen) return;
+    if (!mobileOpen && !themeMenuOpen) return;
 
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setMobileOpen(false);
+      if (event.key !== "Escape") return;
+      setMobileOpen(false);
+      setThemeMenuOpen(false);
     }
 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [mobileOpen]);
+  }, [mobileOpen, themeMenuOpen]);
 
   const navGroups = useMemo(() => groups, []);
   const navId = "admin-sidebar-navigation";
+  const themeMenuId = "admin-theme-menu";
   const activeTheme = mounted ? theme ?? "light" : "light";
   const currentTheme = themeOptions.find((option) => option.value === activeTheme) ?? themeOptions[0];
   const CurrentThemeIcon = currentTheme.icon;
-
-  function cycleTheme() {
-    const currentIndex = themeOptions.findIndex((option) => option.value === activeTheme);
-    const nextTheme = themeOptions[(currentIndex + 1) % themeOptions.length];
-    setTheme(nextTheme.value);
-  }
 
   return (
     <>
@@ -147,7 +146,10 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
             aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
             aria-expanded={mobileOpen}
             aria-controls={navId}
-            onClick={() => setMobileOpen((value) => !value)}
+            onClick={() => {
+              setMobileOpen((value) => !value);
+              setThemeMenuOpen(false);
+            }}
           >
             <Menu aria-hidden className="h-5 w-5" />
           </button>
@@ -157,19 +159,80 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
             aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
             aria-expanded={!collapsed}
             aria-controls={navId}
-            onClick={() => setCollapsed((value) => !value)}
+            onClick={() => {
+              setCollapsed((value) => !value);
+              setThemeMenuOpen(false);
+            }}
           >
             {collapsed ? <ChevronRight aria-hidden className="h-5 w-5" /> : <ChevronLeft aria-hidden className="h-5 w-5" />}
           </button>
         </div>
       </div>
 
-      {!collapsed && (
-        <div className="hidden px-4 pb-3 md:block">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--sidebar-heading)]">Central de Gestao</p>
-          <p className="mt-1 text-xs font-medium text-[var(--sidebar-muted)]">Agenda Pra Ja</p>
-        </div>
-      )}
+      <div className={cn("relative px-4 pb-3", collapsed && "hidden px-3 md:block")}>
+        {!collapsed ? (
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--sidebar-heading)]">Central de Gestao</p>
+              <p className="mt-1 text-xs font-medium text-[var(--sidebar-muted)]">Agenda Pra Ja</p>
+            </div>
+            <ThemeButton
+              activeLabel={currentTheme.label}
+              controls={themeMenuId}
+              expanded={themeMenuOpen}
+              icon={CurrentThemeIcon}
+              onClick={() => setThemeMenuOpen((value) => !value)}
+            />
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <ThemeButton
+              activeLabel={currentTheme.label}
+              controls={themeMenuId}
+              expanded={themeMenuOpen}
+              icon={CurrentThemeIcon}
+              onClick={() => setThemeMenuOpen((value) => !value)}
+            />
+          </div>
+        )}
+
+        {themeMenuOpen && (
+          <div
+            id={themeMenuId}
+            role="menu"
+            className={cn(
+              "absolute top-10 z-50 w-40 rounded-[16px] border border-[var(--sidebar-border)] bg-[var(--surface-strong)] p-1.5 text-[var(--text-strong)] shadow-xl shadow-blue-950/15",
+              collapsed ? "left-3" : "right-4"
+            )}
+          >
+            {themeOptions.map((option) => {
+              const Icon = option.icon;
+              const active = option.value === activeTheme;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  className={cn(
+                    "flex h-10 w-full items-center gap-2 rounded-[12px] px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7]",
+                    active
+                      ? "bg-[var(--accent-soft)] text-[var(--brand-primary)]"
+                      : "text-[var(--text-muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text-strong)]"
+                  )}
+                  onClick={() => {
+                    setTheme(option.value);
+                    setThemeMenuOpen(false);
+                  }}
+                >
+                  <Icon aria-hidden className="h-4 w-4 shrink-0" />
+                  <span>{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <nav
         id={navId}
@@ -220,47 +283,6 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
         </div>
       </nav>
 
-      <div className={cn("px-3 pb-3", mobileOpen ? "block" : "hidden md:block")}>
-        {!collapsed ? (
-          <div className="rounded-[16px] border border-[var(--sidebar-border)] bg-[var(--sidebar-hover-bg)] p-2">
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--sidebar-muted)]">Tema</p>
-            <div className="grid grid-cols-3 gap-1">
-              {themeOptions.map((option) => {
-                const Icon = option.icon;
-                const active = option.value === activeTheme;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={cn(
-                      "inline-flex h-9 items-center justify-center gap-1.5 rounded-[12px] text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2",
-                      active
-                        ? "bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-sm"
-                        : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)]"
-                    )}
-                    aria-pressed={active}
-                    onClick={() => setTheme(option.value)}
-                  >
-                    <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" />
-                    <span>{option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="hidden h-11 w-full items-center justify-center rounded-[14px] text-[var(--sidebar-text)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:inline-flex"
-            title={`Tema: ${currentTheme.label}`}
-            aria-label={`Alternar tema. Atual: ${currentTheme.label}`}
-            onClick={cycleTheme}
-          >
-            <CurrentThemeIcon aria-hidden className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
       <form
         action={logoutAction}
         className={cn("px-3 pb-4", mobileOpen ? "block" : "hidden md:block")}
@@ -285,4 +307,29 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
 function isActive(pathname: string, href: string) {
   if (href === "/admin") return pathname === "/admin";
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+type ThemeButtonProps = {
+  activeLabel: string;
+  controls: string;
+  expanded: boolean;
+  icon: typeof Sun;
+  onClick: () => void;
+};
+
+function ThemeButton({ activeLabel, controls, expanded, icon: Icon, onClick }: ThemeButtonProps) {
+  return (
+    <button
+      type="button"
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+      title={`Tema: ${activeLabel}`}
+      aria-label={`Escolher tema. Atual: ${activeLabel}`}
+      aria-controls={controls}
+      aria-expanded={expanded}
+      aria-haspopup="menu"
+      onClick={onClick}
+    >
+      <Icon aria-hidden className="h-4 w-4" />
+    </button>
+  );
 }
