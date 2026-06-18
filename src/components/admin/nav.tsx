@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { CalendarDays, Clock, Home, MessageCircle, Scissors, Users } from "lucide-react";
+import { redirect } from "next/navigation";
+import { CalendarDays, Clock, Home, LogOut, MessageCircle, Scissors, Users } from "lucide-react";
+import { destroySession } from "@/lib/auth/session";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: Home },
@@ -11,6 +13,12 @@ const links = [
 ];
 
 export function AdminNav() {
+  async function logout() {
+    "use server";
+    await destroySession();
+    redirect("/admin/login");
+  }
+
   return (
     <aside className="border-b border-zinc-200 bg-white md:min-h-screen md:w-64 md:border-b-0 md:border-r">
       <div className="px-5 py-4">
@@ -32,6 +40,12 @@ export function AdminNav() {
           );
         })}
       </nav>
+      <form action={logout} className="px-3 pb-4">
+        <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100">
+          <LogOut className="h-4 w-4" />
+          Sair
+        </button>
+      </form>
     </aside>
   );
 }

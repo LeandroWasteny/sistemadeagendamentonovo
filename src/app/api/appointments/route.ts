@@ -58,17 +58,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Horario indisponivel." }, { status: 409 });
   }
 
-  const appointment = await prisma.appointment.create({
-    data: {
-      serviceId: service.id,
-      professionalId: professional.id,
-      startsAt,
-      endsAt,
-      clientName: input.data.clientName,
-      clientPhone: input.data.clientPhone,
-      notes: input.data.notes || null
-    }
-  });
+  const appointment = await prisma.appointment
+    .create({
+      data: {
+        serviceId: service.id,
+        professionalId: professional.id,
+        startsAt,
+        endsAt,
+        clientName: input.data.clientName,
+        clientPhone: input.data.clientPhone,
+        notes: input.data.notes || null
+      }
+    })
+    .catch((error) => {
+      if (isUniqueConstraintError(error)) {
+        return null;
+      }
+      throw error;
+    });
+
+  if (!appointment) {
+    return NextResponse.json({ error: "Horario acabou de ser ocupado. Escolha outro horario." }, { status: 409 });
+  }
 
   const messages = buildAppointmentMessages({
     clientName: appointment.clientName,
@@ -87,4 +98,8 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({ appointment, notifications });
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }

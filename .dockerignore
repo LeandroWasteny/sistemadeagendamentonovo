@@ -1,0 +1,10 @@
+.git
+.next
+node_modules
+baileys-auth
+.env
+.env.local
+.agents
+coverage
+npm-debug.log
+
