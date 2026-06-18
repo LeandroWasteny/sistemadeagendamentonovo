@@ -12,19 +12,22 @@ const sizes = {
     icon: "h-10 w-10",
     agenda: "text-[22px]",
     praJa: "text-[24px]",
-    lines: "w-8 gap-1"
+    lines: "w-8 gap-1",
+    gap: "gap-2.5"
   },
   md: {
     icon: "h-12 w-12",
     agenda: "text-[30px]",
     praJa: "text-[32px]",
-    lines: "w-10 gap-1.5"
+    lines: "w-10 gap-1.5",
+    gap: "gap-3"
   },
   lg: {
-    icon: "h-14 w-14",
+    icon: "h-16 w-16",
     agenda: "text-[42px] md:text-[48px]",
     praJa: "text-[44px] md:text-[50px]",
-    lines: "w-12 gap-1.5"
+    lines: "w-12 gap-1.5",
+    gap: "gap-4"
   }
 };
 
@@ -32,13 +35,13 @@ export function BrandLogo({ className, iconClassName, wordmarkClassName, size = 
   const current = sizes[size];
 
   return (
-    <div className={cn("flex items-center gap-3", className)} aria-label="Agenda Pra Já">
+    <div className={cn("flex items-center", current.gap, className)} aria-label="Agenda Pra Já">
       <img
-        src="/brand/logo.svg"
+        src="/brand/logo-icon.png"
         alt=""
         className={cn("shrink-0 object-contain", current.icon, iconClassName)}
       />
-      <div className={cn("font-display leading-none", wordmarkClassName)}>
+      <div className={cn("font-display leading-none tracking-normal", wordmarkClassName)}>
         <div className={cn("font-extrabold text-[#082F8B]", current.agenda)}>Agenda</div>
         <div className="mt-0.5 flex items-center">
           <span className={cn("mr-2 flex flex-col", current.lines)} aria-hidden="true">
