@@ -1,4 +1,4 @@
-import { rm } from "fs/promises";
+import { readdir, rm } from "fs/promises";
 import pino from "pino";
 import QRCode from "qrcode";
 import type makeWASocket from "baileys";
@@ -198,5 +198,20 @@ function getAuthDir() {
 }
 
 async function clearAuthState() {
-  await rm(getAuthDir(), { recursive: true, force: true });
+  const authDir = getAuthDir();
+  const entries = await readdir(authDir, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  });
+
+  await Promise.all(
+    entries.map((entry) =>
+      rm(`${authDir}/${entry.name}`, {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+        retryDelay: 300
+      })
+    )
+  );
 }

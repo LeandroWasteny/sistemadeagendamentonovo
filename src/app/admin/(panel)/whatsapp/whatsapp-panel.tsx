@@ -20,45 +20,61 @@ export function WhatsappPanel() {
   const [testResult, setTestResult] = useState("");
 
   async function loadStatus() {
-    const response = await fetch("/api/admin/whatsapp", { cache: "no-store" });
-    setState(await response.json());
+    try {
+      const response = await fetch("/api/admin/whatsapp", { cache: "no-store" });
+      setState(await response.json());
+    } catch {
+      setState((current) => current ?? null);
+    }
   }
 
   async function connect() {
     setLoading(true);
-    const response = await fetch("/api/admin/whatsapp", { method: "POST" });
-    setState(await response.json());
-    setLoading(false);
+    try {
+      const response = await fetch("/api/admin/whatsapp", { method: "POST" });
+      setState(await response.json());
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function disconnect() {
     setLoading(true);
-    const response = await fetch("/api/admin/whatsapp", { method: "DELETE" });
-    setState(await response.json());
-    setLoading(false);
+    try {
+      const response = await fetch("/api/admin/whatsapp", { method: "DELETE" });
+      setState(await response.json());
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function resetSession() {
     setLoading(true);
-    const response = await fetch("/api/admin/whatsapp", { method: "DELETE" });
-    setState(await response.json());
-    setLoading(false);
+    try {
+      const response = await fetch("/api/admin/whatsapp", { method: "DELETE" });
+      setState(await response.json());
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function sendTest(formData: FormData) {
     setTestResult("");
     setLoading(true);
-    const response = await fetch("/api/admin/whatsapp/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        phone: formData.get("phone"),
-        text: formData.get("text")
-      })
-    });
-    const data = await response.json();
-    setLoading(false);
-    setTestResult(response.ok ? "Mensagem de teste enviada." : data.error);
+    try {
+      const response = await fetch("/api/admin/whatsapp/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: formData.get("phone"),
+          text: formData.get("text")
+        })
+      });
+      const data = await response.json();
+      setTestResult(response.ok ? "Mensagem de teste enviada." : data.error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
