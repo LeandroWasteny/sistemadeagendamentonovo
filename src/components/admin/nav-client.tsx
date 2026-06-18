@@ -142,7 +142,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
         <div className="flex items-center gap-1">
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-[12px] text-[var(--sidebar-text)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:hidden"
+            className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-[12px] text-[var(--sidebar-text)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:hidden"
             aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
             aria-expanded={mobileOpen}
             aria-controls={navId}
@@ -155,7 +155,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
           </button>
           <button
             type="button"
-            className="hidden h-10 w-10 items-center justify-center rounded-[12px] text-[var(--sidebar-text)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:inline-flex"
+            className="hidden h-11 w-11 touch-manipulation items-center justify-center rounded-[12px] text-[var(--sidebar-text)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:inline-flex"
             aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
             aria-expanded={!collapsed}
             aria-controls={navId}
@@ -321,7 +321,7 @@ function ThemeButton({ activeLabel, controls, expanded, icon: Icon, onClick }: T
   return (
     <button
       type="button"
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+      className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-[12px] text-[var(--sidebar-muted)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
       title={`Tema: ${activeLabel}`}
       aria-label={`Escolher tema. Atual: ${activeLabel}`}
       aria-controls={controls}

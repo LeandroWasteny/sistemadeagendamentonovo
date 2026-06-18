@@ -65,8 +65,8 @@ export default async function ServicesPage() {
   });
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[380px_1fr]">
-      <form action={createService} className="rounded-[20px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
+    <section className="grid min-w-0 gap-6 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+      <form action={createService} className="min-w-0 rounded-[20px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
         <p className="text-sm font-semibold text-[#0F5EF7]">Catalogo</p>
         <h1 className="font-display mt-1 text-xl font-semibold text-[#082F8B]">Novo servico</h1>
         <div className="mt-4 space-y-3">
@@ -82,14 +82,14 @@ export default async function ServicesPage() {
         </div>
       </form>
 
-      <div className="rounded-[20px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
+      <div className="min-w-0 overflow-hidden rounded-[20px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
         <div className="border-b border-blue-50 p-5">
           <h2 className="font-display text-xl font-semibold text-[#082F8B]">Servicos cadastrados</h2>
         </div>
         <div className="divide-y divide-blue-50">
           {services.map((service) => (
             <div key={service.id} className="p-5">
-              <form action={updateService} className="grid gap-3 lg:grid-cols-[1fr_1fr_110px_110px_auto] lg:items-end">
+              <form action={updateService} className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_110px_110px_auto] xl:items-end">
                 <input type="hidden" name="id" value={service.id} />
                 <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
                   Nome
@@ -107,10 +107,10 @@ export default async function ServicesPage() {
                   Preco
                   <Input name="price" type="number" min="0" step="0.01" defaultValue={service.priceCents / 100} required />
                 </label>
-                <Button variant="secondary">Atualizar</Button>
+                <Button className="w-full xl:w-auto" variant="secondary">Atualizar</Button>
               </form>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-0 flex-wrap gap-2">
                   <p className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-[#0F5EF7]">{formatCurrency(service.priceCents)} - {service.active ? "ativo" : "inativo"}</p>
                   {service.professionals.map((item) => (
                     <p key={item.professionalId} className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-[#22C55E]">
@@ -121,15 +121,15 @@ export default async function ServicesPage() {
                     <p className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">sem profissional</p>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <form action={toggleService}>
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                  <form action={toggleService} className="min-w-[132px] flex-1 sm:flex-none">
                     <input type="hidden" name="id" value={service.id} />
                     <input type="hidden" name="active" value={String(!service.active)} />
-                    <Button variant="secondary">{service.active ? "Desativar" : "Ativar"}</Button>
+                    <Button className="w-full" variant="secondary">{service.active ? "Desativar" : "Ativar"}</Button>
                   </form>
-                  <form action={deleteService}>
+                  <form action={deleteService} className="min-w-[132px] flex-1 sm:flex-none">
                     <input type="hidden" name="id" value={service.id} />
-                    <Button variant="danger">Excluir</Button>
+                    <Button className="w-full" variant="danger">Excluir</Button>
                   </form>
                 </div>
               </div>

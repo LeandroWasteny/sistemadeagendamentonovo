@@ -286,18 +286,18 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[22px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <section className="min-w-0 overflow-hidden rounded-[22px] border border-white bg-white/95 p-4 shadow-xl shadow-blue-950/5 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-blue-50 text-[#0F5EF7]">
             <Icon aria-hidden className="h-5 w-5" />
           </span>
-          <h2 className="font-display truncate text-lg font-semibold text-[#082F8B]">{title}</h2>
+          <h2 className="font-display min-w-0 text-pretty text-lg font-semibold text-[#082F8B]">{title}</h2>
         </div>
         {actionHref && actionLabel && (
           <Link
             href={actionHref}
-            className="shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold text-[#0F5EF7] transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 shrink-0 touch-manipulation items-center rounded-full px-3 py-1.5 text-sm font-semibold text-[#0F5EF7] transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
           >
             {actionLabel}
           </Link>
@@ -392,9 +392,9 @@ function WeeklyRow({ row, max }: { row: { key: string; label: string; total: num
   const width = row.total > 0 ? Math.max(8, Math.round((row.total / max) * 100)) : 0;
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-        <span className="font-semibold text-[#082F8B]">{row.label}</span>
-        <span className="font-semibold tabular-nums text-slate-500">
+      <div className="mb-1 flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+        <span className="min-w-0 font-semibold text-[#082F8B]">{row.label}</span>
+        <span className="break-words font-semibold tabular-nums text-slate-500">
           {row.total} total / {row.active} ativo(s)
         </span>
       </div>

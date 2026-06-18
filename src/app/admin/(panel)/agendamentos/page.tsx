@@ -193,14 +193,14 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
           <div className="flex flex-wrap gap-2">
             <Link
               href="/agendar"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-[12px] border border-blue-100 bg-white px-4 text-sm font-semibold text-[#082F8B] transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+              className="inline-flex h-11 min-h-11 touch-manipulation items-center justify-center gap-2 rounded-[12px] border border-blue-100 bg-white px-4 text-sm font-semibold text-[#082F8B] transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
             >
               <CalendarClock aria-hidden className="h-4 w-4" />
               Tela publica
             </Link>
             <Link
               href="/admin/relatorios"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-[12px] bg-[#0F5EF7] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition hover:bg-[#0B4FD9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+              className="inline-flex h-11 min-h-11 touch-manipulation items-center justify-center gap-2 rounded-[12px] bg-[#0F5EF7] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition hover:bg-[#0B4FD9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
             >
               <Search aria-hidden className="h-4 w-4" />
               Relatorios
@@ -405,7 +405,7 @@ function CancelAction({ id, disabled = false }: { id: string; disabled?: boolean
 
   return (
     <details className="rounded-[12px] bg-white">
-      <summary className="flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-[12px] bg-rose-500 px-4 text-sm font-semibold text-white shadow-sm shadow-rose-500/20 transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2">
+      <summary className="flex h-11 min-h-11 cursor-pointer list-none touch-manipulation items-center justify-center gap-2 rounded-[12px] bg-rose-500 px-4 text-sm font-semibold text-white shadow-sm shadow-rose-500/20 transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2">
         <XCircle aria-hidden className="h-4 w-4" />
         Cancelar
       </summary>
@@ -471,8 +471,8 @@ function FilterLink({ active, href, children }: { active: boolean; href: string;
       href={href}
       className={
         active
-          ? "rounded-full bg-[#0F5EF7] px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
-          : "rounded-full border border-blue-100 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-[#0F5EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+          ? "inline-flex min-h-11 touch-manipulation items-center rounded-full bg-[#0F5EF7] px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+          : "inline-flex min-h-11 touch-manipulation items-center rounded-full border border-blue-100 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-[#0F5EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
       }
     >
       {children}

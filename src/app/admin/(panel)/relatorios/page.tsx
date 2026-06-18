@@ -68,11 +68,11 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
             <h1 className="font-display mt-1 text-2xl font-semibold text-[#082F8B]">Relatorios</h1>
             <p className="mt-1 text-sm text-slate-500">Acompanhe volume, status, servicos e profissionais no periodo.</p>
           </div>
-          <form className="flex flex-wrap items-end gap-3" method="get">
+          <form className="grid w-full gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end lg:w-auto" method="get">
             <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
               De
               <input
-                className="h-10 rounded-[12px] border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#0F5EF7] focus:ring-2 focus:ring-blue-100"
+                className="h-11 min-h-11 w-full touch-manipulation rounded-[12px] border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#0F5EF7] focus:ring-2 focus:ring-blue-100"
                 defaultValue={from}
                 name="from"
                 type="date"
@@ -81,13 +81,13 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
             <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
               Ate
               <input
-                className="h-10 rounded-[12px] border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#0F5EF7] focus:ring-2 focus:ring-blue-100"
+                className="h-11 min-h-11 w-full touch-manipulation rounded-[12px] border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#0F5EF7] focus:ring-2 focus:ring-blue-100"
                 defaultValue={to}
                 name="to"
                 type="date"
               />
             </label>
-            <button className="h-10 rounded-[12px] bg-[#0F5EF7] px-4 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-[#082F8B]">
+            <button className="h-11 min-h-11 touch-manipulation rounded-[12px] bg-[#0F5EF7] px-4 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-[#082F8B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2">
               Filtrar
             </button>
           </form>
@@ -200,9 +200,9 @@ function MetricCard({
   }[tone];
 
   return (
-    <div className="rounded-[20px] border border-white bg-white/95 p-5 shadow-lg shadow-blue-950/5">
+    <div className="min-w-0 rounded-[20px] border border-white bg-white/95 p-5 shadow-lg shadow-blue-950/5">
       <span className={`flex h-11 w-11 items-center justify-center rounded-[14px] ${toneClass}`}>
-        <Icon className="h-5 w-5" />
+        <Icon aria-hidden className="h-5 w-5" />
       </span>
       <p className="mt-4 text-3xl font-semibold text-[#082F8B]">{value}</p>
       <p className="text-sm font-semibold text-[#082F8B]">{label}</p>
@@ -221,12 +221,12 @@ function ReportPanel({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-[22px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
-      <div className="mb-4 flex items-center gap-3">
+    <div className="min-w-0 overflow-hidden rounded-[22px] border border-white bg-white/95 p-4 shadow-xl shadow-blue-950/5 sm:p-5">
+      <div className="mb-4 flex min-w-0 items-center gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-blue-50 text-[#0F5EF7]">
-          <Icon className="h-5 w-5" />
+          <Icon aria-hidden className="h-5 w-5" />
         </span>
-        <h2 className="font-display text-lg font-semibold text-[#082F8B]">{title}</h2>
+        <h2 className="font-display min-w-0 text-pretty text-lg font-semibold text-[#082F8B]">{title}</h2>
       </div>
       {children}
     </div>
@@ -237,9 +237,9 @@ function ProgressRow({ label, value, max }: { label: string; value: number; max:
   const width = max > 0 ? Math.max(8, Math.round((value / max) * 100)) : 0;
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-        <span className="font-semibold text-[#082F8B]">{label}</span>
-        <span className="font-semibold text-slate-500">{value}</span>
+      <div className="mb-1 flex min-w-0 items-center justify-between gap-3 text-sm">
+        <span className="min-w-0 truncate font-semibold text-[#082F8B]">{label}</span>
+        <span className="shrink-0 font-semibold tabular-nums text-slate-500">{value}</span>
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-[#F3F4F6]">
         <div className="h-full rounded-full bg-[linear-gradient(90deg,#0F5EF7,#38BDF8)]" style={{ width: `${width}%` }} />

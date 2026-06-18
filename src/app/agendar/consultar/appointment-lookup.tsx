@@ -68,7 +68,7 @@ export function AppointmentLookup() {
         </div>
         <a
           href="/agendar"
-          className="inline-flex h-9 items-center gap-2 rounded-full border border-blue-100 bg-white px-3 text-sm font-semibold text-[var(--booking-primary)] transition hover:border-[var(--booking-primary)] hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]"
+          className="inline-flex h-11 min-h-11 touch-manipulation items-center gap-2 rounded-full border border-blue-100 bg-white px-4 text-sm font-semibold text-[var(--booking-primary)] transition hover:border-[var(--booking-primary)] hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]"
         >
           <ArrowLeft aria-hidden className="h-4 w-4" />
           Agendar
