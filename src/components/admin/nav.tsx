@@ -1,55 +1,13 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BarChart3, CalendarDays, Clock, Home, LogOut, MessageCircle, Scissors, Users } from "lucide-react";
-import { BrandLogo } from "@/components/brand/brand-logo";
 import { destroySession } from "@/lib/auth/session";
-
-const links = [
-  { href: "/admin", label: "Dashboard", icon: Home },
-  { href: "/admin/agendamentos", label: "Agendamentos", icon: CalendarDays },
-  { href: "/admin/servicos", label: "Servicos", icon: Scissors },
-  { href: "/admin/profissionais", label: "Profissionais", icon: Users },
-  { href: "/admin/horarios", label: "Horarios", icon: Clock },
-  { href: "/admin/relatorios", label: "Relatorios", icon: BarChart3 },
-  { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle }
-];
+import { AdminNavClient } from "./nav-client";
 
 export function AdminNav() {
-  async function logout() {
+  async function logout(_formData: FormData) {
     "use server";
     await destroySession();
     redirect("/admin/login");
   }
 
-  return (
-    <aside className="border-b border-blue-100 bg-white/95 shadow-sm shadow-blue-950/5 backdrop-blur md:min-h-screen md:w-72 md:border-b-0 md:border-r">
-      <div className="px-5 py-5">
-        <Link href="/admin" className="block">
-          <p className="mb-3 text-xs font-semibold uppercase text-[#0F5EF7]">Painel admin</p>
-          <BrandLogo size="sm" />
-        </Link>
-      </div>
-      <nav className="flex gap-1 overflow-x-auto px-3 pb-3 md:block md:space-y-1">
-        {links.map((link) => {
-          const Icon = link.icon;
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="flex items-center gap-2 rounded-[12px] px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-[#0F5EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
-            >
-              <Icon aria-hidden className="h-4 w-4" />
-              {link.label}
-            </Link>
-          );
-        })}
-      </nav>
-      <form action={logout} className="px-3 pb-4">
-        <button className="flex w-full items-center gap-2 rounded-[12px] px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-[#0F5EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2">
-          <LogOut aria-hidden className="h-4 w-4" />
-          Sair
-        </button>
-      </form>
-    </aside>
-  );
+  return <AdminNavClient logoutAction={logout} />;
 }

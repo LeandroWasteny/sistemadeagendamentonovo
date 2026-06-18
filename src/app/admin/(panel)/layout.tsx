@@ -6,7 +6,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#ffffff_0%,#f7f9fd_52%,#eefcf5_100%)] text-[#082F8B] md:flex">
       <AdminNav />
-      <main className="flex-1 p-4 md:p-8">{children}</main>
+      <main className="min-w-0 flex-1 p-4 md:p-8">{children}</main>
     </div>
   );
 }
