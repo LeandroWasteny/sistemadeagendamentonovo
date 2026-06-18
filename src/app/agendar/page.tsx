@@ -47,14 +47,11 @@ export default async function BookingPage() {
             })}
           </div>
 
-          <div className="mt-8 hidden max-w-lg items-center gap-4 rounded-[18px] border border-emerald-100 bg-white/80 p-4 shadow-sm md:flex">
-            <img src="/brand/logo-icon.png" alt="" className="h-16 w-16 object-contain" />
-            <div>
-              <p className="text-sm font-semibold text-[#22C55E]">Confirmacao automatica</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                Cliente e profissional ficam alinhados pelo WhatsApp assim que o agendamento e criado.
-              </p>
-            </div>
+          <div className="mt-8 hidden max-w-lg rounded-[18px] border border-emerald-100 bg-white/80 p-4 shadow-sm md:block">
+            <p className="text-sm font-semibold text-[#22C55E]">Confirmacao automatica</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Cliente e profissional ficam alinhados pelo WhatsApp assim que o agendamento e criado.
+            </p>
           </div>
         </div>
 
