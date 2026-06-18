@@ -55,15 +55,15 @@ export function WhatsappPanel() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[420px_1fr]">
-      <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-semibold">Conexao Baileys</h2>
-        <p className="mt-2 text-sm leading-6 text-zinc-600">
+      <div className="rounded-[20px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
+        <h2 className="font-display text-xl font-semibold text-[#082F8B]">Conexao Baileys</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
           Clique em conectar, aguarde o QR Code e leia pelo WhatsApp em aparelhos conectados.
         </p>
-        <div className="mt-5 rounded-md bg-zinc-100 px-3 py-2 text-sm">
+        <div className="mt-5 rounded-[14px] bg-blue-50 px-3 py-2 text-sm text-[#082F8B]">
           Status: <strong>{status}</strong>
         </div>
-        {state?.message && <p className="mt-3 text-sm text-zinc-600">{state.message}</p>}
+        {state?.message && <p className="mt-3 text-sm text-slate-600">{state.message}</p>}
         <div className="mt-5 flex flex-wrap gap-2">
           <Button className="gap-2" onClick={connect} disabled={loading || status === "CONNECTED"}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
@@ -74,20 +74,20 @@ export function WhatsappPanel() {
             Desconectar
           </Button>
         </div>
-        <p className="mt-3 text-xs leading-5 text-zinc-500">
+        <p className="mt-3 text-xs leading-5 text-slate-500">
           Desconectar remove a sessao local e tenta remover este sistema da lista de aparelhos conectados no celular.
         </p>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-semibold">QR Code</h2>
+      <div className="rounded-[20px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
+        <h2 className="font-display text-xl font-semibold text-[#082F8B]">QR Code</h2>
         {state?.qrImage ? (
           <div className="mt-5 flex flex-col items-start gap-4">
-            <img src={state.qrImage} alt="QR Code do WhatsApp" className="h-72 w-72 rounded-md border border-zinc-200 bg-white p-2" />
-            <textarea readOnly value={state.qr ?? ""} className="min-h-24 w-full rounded-md border border-zinc-200 p-3 text-xs text-zinc-500" />
+            <img src={state.qrImage} alt="QR Code do WhatsApp" className="h-72 w-72 rounded-[16px] border border-blue-100 bg-white p-2" />
+            <textarea readOnly value={state.qr ?? ""} className="min-h-24 w-full rounded-[14px] border border-blue-100 p-3 text-xs text-slate-500 outline-none" />
           </div>
         ) : (
-          <p className="mt-5 rounded-md bg-zinc-100 px-3 py-6 text-center text-sm text-zinc-500">
+          <p className="mt-5 rounded-[16px] bg-[#F3F4F6] px-3 py-6 text-center text-sm text-slate-500">
             Nenhum QR Code disponivel no momento.
           </p>
         )}

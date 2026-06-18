@@ -52,13 +52,14 @@ export default async function ProfessionalsPage() {
 
   return (
     <section className="grid gap-6 lg:grid-cols-[380px_1fr]">
-      <form action={createProfessional} className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h1 className="text-xl font-semibold">Nova profissional</h1>
+      <form action={createProfessional} className="rounded-[20px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
+        <p className="text-sm font-semibold text-[#0F5EF7]">Equipe</p>
+        <h1 className="font-display mt-1 text-xl font-semibold text-[#082F8B]">Nova profissional</h1>
         <div className="mt-4 space-y-3">
           <Input name="name" placeholder="Nome" required />
           <Input name="phone" placeholder="WhatsApp" required />
           <Textarea name="specialties" placeholder="Especialidades" required />
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-sm font-semibold text-[#082F8B]">
             <input name="active" type="checkbox" defaultChecked />
             Ativa
           </label>
@@ -66,31 +67,31 @@ export default async function ProfessionalsPage() {
         </div>
       </form>
 
-      <div className="rounded-lg border border-zinc-200 bg-white shadow-sm">
-        <div className="border-b border-zinc-200 p-5">
-          <h2 className="text-xl font-semibold">Profissionais cadastradas</h2>
+      <div className="rounded-[20px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
+        <div className="border-b border-blue-50 p-5">
+          <h2 className="font-display text-xl font-semibold text-[#082F8B]">Profissionais cadastradas</h2>
         </div>
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-blue-50">
           {professionals.map((professional) => (
             <div key={professional.id} className="p-5">
               <form action={updateProfessional} className="grid gap-3 lg:grid-cols-[1fr_160px_1fr_auto] lg:items-end">
                 <input type="hidden" name="id" value={professional.id} />
-                <label className="space-y-1 text-sm font-medium">
+                <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
                   Nome
                   <Input name="name" defaultValue={professional.name} required />
                 </label>
-                <label className="space-y-1 text-sm font-medium">
+                <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
                   WhatsApp
                   <Input name="phone" defaultValue={professional.phone} required />
                 </label>
-                <label className="space-y-1 text-sm font-medium">
+                <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
                   Especialidades
                   <Input name="specialties" defaultValue={professional.specialties} required />
                 </label>
                 <Button variant="secondary">Atualizar</Button>
               </form>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm text-zinc-500">{professional.active ? "ativa" : "inativa"}</p>
+                <p className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-[#22C55E]">{professional.active ? "ativa" : "inativa"}</p>
                 <div className="flex gap-2">
                   <form action={toggleProfessional}>
                     <input type="hidden" name="id" value={professional.id} />

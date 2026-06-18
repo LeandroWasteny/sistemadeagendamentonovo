@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, CheckCircle2, Loader2, Send } from "lucide-react";
+import { Calendar, CheckCircle2, Clock3, Loader2, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -91,19 +91,38 @@ export function BookingForm({
   const selectedService = services.find((service) => service.id === serviceId);
 
   return (
-    <form action={handleSubmit} className="rounded-lg border border-white/70 bg-white/90 p-5 shadow-xl shadow-zinc-200/60 backdrop-blur">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-md bg-zinc-950 text-white">
-          <Calendar className="h-5 w-5" />
+    <form
+      action={handleSubmit}
+      className="rounded-[24px] border border-white bg-white/95 p-4 shadow-2xl shadow-blue-950/10 backdrop-blur md:p-6"
+    >
+      <div className="mb-5 flex items-center justify-between gap-3 border-b border-blue-50 pb-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-[#0F5EF7] text-white shadow-lg shadow-blue-500/20">
+            <Calendar className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-semibold text-[#082F8B]">Novo agendamento</h2>
+            <p className="text-sm text-slate-500">Preencha os dados para reservar seu horario.</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-semibold">Novo agendamento</h2>
-          <p className="text-sm text-zinc-500">Preencha os dados para reservar o horario.</p>
+        <div className="hidden rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-[#22C55E] sm:block">
+          Online
         </div>
       </div>
 
+      <div className="mb-5 grid gap-2 sm:grid-cols-3">
+        {["Servico", "Horario", "Contato"].map((step, index) => (
+          <div key={step} className="flex items-center gap-2 rounded-[14px] bg-[#F3F4F6] px-3 py-2 text-sm font-semibold text-[#082F8B]">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs text-[#0F5EF7] shadow-sm">
+              {index + 1}
+            </span>
+            {step}
+          </div>
+        ))}
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-1 text-sm font-medium">
+        <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
           Servico
           <Select value={serviceId} onChange={(event) => setServiceId(event.target.value)} required>
             {services.map((service) => (
@@ -113,7 +132,7 @@ export function BookingForm({
             ))}
           </Select>
         </label>
-        <label className="space-y-1 text-sm font-medium">
+        <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
           Profissional
           <Select value={professionalId} onChange={(event) => setProfessionalId(event.target.value)} required>
             {professionals.map((professional) => (
@@ -123,11 +142,11 @@ export function BookingForm({
             ))}
           </Select>
         </label>
-        <label className="space-y-1 text-sm font-medium">
+        <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
           Data
           <Input type="date" value={date} min={new Date().toISOString().slice(0, 10)} onChange={(event) => setDate(event.target.value)} required />
         </label>
-        <label className="space-y-1 text-sm font-medium">
+        <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
           Horario
           <Select value={slot} onChange={(event) => setSlot(event.target.value)} required>
             <option value="">{loadingSlots ? "Carregando..." : "Selecione"}</option>
@@ -141,34 +160,40 @@ export function BookingForm({
       </div>
 
       {selectedService && (
-        <p className="mt-3 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-600">
-          Duracao estimada: {selectedService.durationMinutes} minutos.
-        </p>
+        <div className="mt-4 flex items-center gap-3 rounded-[16px] border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-[#082F8B]">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-white text-[#0F5EF7] shadow-sm">
+            <Clock3 className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="font-semibold">{selectedService.name}</p>
+            <p className="text-slate-600">Duracao estimada: {selectedService.durationMinutes} minutos.</p>
+          </div>
+        </div>
       )}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <label className="space-y-1 text-sm font-medium">
+        <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
           Nome
           <Input name="clientName" required placeholder="Nome do cliente" />
         </label>
-        <label className="space-y-1 text-sm font-medium">
+        <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
           WhatsApp
           <Input name="clientPhone" required placeholder="85999990000" />
         </label>
       </div>
-      <label className="mt-4 block space-y-1 text-sm font-medium">
+      <label className="mt-4 block space-y-1.5 text-sm font-semibold text-[#082F8B]">
         Observacao
         <Textarea name="notes" placeholder="Opcional" />
       </label>
 
-      <Button className="mt-5 w-full gap-2" disabled={saving || !slot}>
+      <Button className="mt-5 h-12 w-full gap-2 text-base" disabled={saving || !slot}>
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         Confirmar agendamento
       </Button>
 
       {message && (
-        <p className="mt-4 flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          <CheckCircle2 className="h-4 w-4" />
+        <p className="mt-4 flex items-center gap-2 rounded-[16px] border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm font-medium text-emerald-700">
+          {message.includes("falhou") ? <Sparkles className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
           {message}
         </p>
       )}

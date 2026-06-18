@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sistema de Agendamento",
-  description: "Agendamentos online com painel administrativo"
+  title: "Agenda Pra Já",
+  description: "Agendamento online rapido com painel administrativo e notificacoes por WhatsApp",
+  icons: {
+    icon: "/brand/logo.svg",
+    apple: "/brand/logo-icon.png"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,4 +17,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-

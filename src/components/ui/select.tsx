@@ -6,10 +6,9 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
     <select
       {...props}
       className={cn(
-        "h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-500",
+        "h-10 w-full rounded-[12px] border border-blue-100 bg-white px-3 text-sm text-[#082F8B] outline-none transition focus:border-[#0F5EF7] focus:ring-4 focus:ring-blue-100",
         props.className
       )}
     />
   );
 }
-

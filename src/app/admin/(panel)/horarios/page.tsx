@@ -48,8 +48,9 @@ export default async function SchedulesPage() {
 
   return (
     <section className="grid gap-6 lg:grid-cols-[380px_1fr]">
-      <form action={createSchedule} className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h1 className="text-xl font-semibold">Novo horario</h1>
+      <form action={createSchedule} className="rounded-[20px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
+        <p className="text-sm font-semibold text-[#0F5EF7]">Disponibilidade</p>
+        <h1 className="font-display mt-1 text-xl font-semibold text-[#082F8B]">Novo horario</h1>
         <div className="mt-4 space-y-3">
           <Select name="professionalId" required>
             {professionals.map((professional) => (
@@ -64,7 +65,7 @@ export default async function SchedulesPage() {
           <Input name="startTime" type="time" required />
           <Input name="endTime" type="time" required />
           <Input name="intervalMinutes" type="number" min="15" step="15" defaultValue="30" required />
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-sm font-semibold text-[#082F8B]">
             <input name="active" type="checkbox" defaultChecked />
             Ativo
           </label>
@@ -72,16 +73,16 @@ export default async function SchedulesPage() {
         </div>
       </form>
 
-      <div className="rounded-lg border border-zinc-200 bg-white shadow-sm">
-        <div className="border-b border-zinc-200 p-5">
-          <h2 className="text-xl font-semibold">Horarios cadastrados</h2>
+      <div className="rounded-[20px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
+        <div className="border-b border-blue-50 p-5">
+          <h2 className="font-display text-xl font-semibold text-[#082F8B]">Horarios cadastrados</h2>
         </div>
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-blue-50">
           {schedules.map((schedule) => (
             <div key={schedule.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="font-medium">{schedule.professional.name}</p>
-                <p className="text-sm text-zinc-500">
+                <p className="font-semibold text-[#082F8B]">{schedule.professional.name}</p>
+                <p className="text-sm text-slate-500">
                   {days.find((day) => day.value === schedule.dayOfWeek)?.label}: {schedule.startTime} ate {schedule.endTime}, intervalo {schedule.intervalMinutes} min
                 </p>
               </div>

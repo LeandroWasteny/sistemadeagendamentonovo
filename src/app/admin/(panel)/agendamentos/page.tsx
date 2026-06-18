@@ -77,27 +77,29 @@ export default async function AppointmentsPage() {
 
   return (
     <section>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Agendamentos</h1>
-        <p className="mt-1 text-sm text-zinc-500">Confirme, cancele ou conclua atendimentos.</p>
+      <div className="mb-6 rounded-[20px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
+        <p className="text-sm font-semibold text-[#0F5EF7]">Agenda</p>
+        <h1 className="font-display mt-1 text-2xl font-semibold text-[#082F8B]">Agendamentos</h1>
+        <p className="mt-1 text-sm text-slate-500">Confirme, cancele ou conclua atendimentos.</p>
       </div>
-      <div className="rounded-lg border border-zinc-200 bg-white shadow-sm">
-        <div className="divide-y divide-zinc-100">
+      <div className="rounded-[20px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
+        <div className="divide-y divide-blue-50">
           {appointments.map((appointment) => (
             <div key={appointment.id} className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-                <p className="font-medium">{appointment.clientName} - {appointment.service.name}</p>
-                <p className="text-sm text-zinc-500">
+                <p className="font-semibold text-[#082F8B]">{appointment.clientName} - {appointment.service.name}</p>
+                <p className="text-sm text-slate-500">
                   {appointment.professional.name} em {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(appointment.startsAt)}
                 </p>
-                <p className="text-sm text-zinc-500">WhatsApp: {appointment.clientPhone} - Status: {statusLabel(appointment.status)}</p>
-                {appointment.notes && <p className="mt-1 text-sm text-zinc-600">{appointment.notes}</p>}
+                <p className="mt-1 text-sm text-slate-500">WhatsApp: {appointment.clientPhone}</p>
+                <p className="mt-2 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#0F5EF7]">Status: {statusLabel(appointment.status)}</p>
+                {appointment.notes && <p className="mt-2 text-sm text-slate-600">{appointment.notes}</p>}
                 <div className="mt-3 space-y-1">
                   {appointment.notifications.length === 0 ? (
-                    <p className="text-xs text-zinc-400">Nenhuma tentativa de notificacao registrada.</p>
+                    <p className="text-xs text-slate-400">Nenhuma tentativa de notificacao registrada.</p>
                   ) : (
                     appointment.notifications.map((notification) => (
-                      <p key={notification.id} className="text-xs text-zinc-500">
+                      <p key={notification.id} className="text-xs text-slate-500">
                         {notification.target === "CLIENT" ? "Cliente" : "Profissional"}: {notification.status === "SENT" ? "enviado" : "falhou"}
                         {notification.error ? ` - ${notification.error}` : ""}
                       </p>
@@ -122,7 +124,7 @@ export default async function AppointmentsPage() {
               </div>
             </div>
           ))}
-          {appointments.length === 0 && <p className="p-5 text-sm text-zinc-500">Nenhum agendamento cadastrado.</p>}
+          {appointments.length === 0 && <p className="p-5 text-sm text-slate-500">Nenhum agendamento cadastrado.</p>}
         </div>
       </div>
     </section>
