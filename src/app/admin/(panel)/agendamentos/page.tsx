@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import {
   BadgeCheck,
   BellRing,
@@ -14,6 +15,7 @@ import {
 import type { ComponentType, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/auth/session";
+import { getWhatsappConnectionState } from "@/lib/notifications/baileys-manager";
 import { createNotificationLogs } from "@/lib/notifications/logs";
 import { buildAppointmentMessages } from "@/lib/notifications/templates";
 import { sendAppointmentNotifications } from "@/lib/notifications/whatsapp";
@@ -57,6 +59,7 @@ const statusClasses: Record<AppointmentStatus, string> = {
   CANCELLED: "bg-rose-50 text-rose-700",
   COMPLETED: "bg-emerald-50 text-[#22C55E]"
 };
+const whatsappDisconnectedMessage = "WhatsApp desconectado. O status foi alterado, mas a notificacao nao foi enviada.";
 
 async function updateAppointmentStatus(formData: FormData) {
   "use server";
@@ -67,7 +70,7 @@ async function updateAppointmentStatus(formData: FormData) {
     include: { service: true, professional: true }
   });
 
-  await notifyAppointment(appointment);
+  queueAppointmentNotification(appointment);
 
   revalidatePath("/admin/agendamentos");
   revalidatePath("/admin");
@@ -83,11 +86,27 @@ async function resendAppointmentNotifications(formData: FormData) {
   });
 
   if (appointment) {
-    await notifyAppointment(appointment);
+    queueAppointmentNotification(appointment);
   }
 
   revalidatePath("/admin/agendamentos");
   revalidatePath("/admin/relatorios");
+}
+
+function queueAppointmentNotification(appointment: {
+  id: string;
+  clientName: string;
+  clientPhone: string;
+  startsAt: Date;
+  status: string;
+  service: { name: string };
+  professional: { name: string; phone: string };
+}) {
+  after(async () => {
+    await notifyAppointment(appointment);
+    revalidatePath("/admin/agendamentos");
+    revalidatePath("/admin/relatorios");
+  });
 }
 
 async function notifyAppointment(appointment: {
@@ -108,6 +127,19 @@ async function notifyAppointment(appointment: {
     startsAt: appointment.startsAt,
     status: appointment.status
   });
+
+  if (process.env.WHATSAPP_MODE === "baileys" && getWhatsappConnectionState().status !== "CONNECTED") {
+    await createNotificationLogs({
+      appointmentId: appointment.id,
+      messages,
+      results: [
+        { target: "client", ok: false, error: whatsappDisconnectedMessage },
+        { target: "professional", ok: false, error: whatsappDisconnectedMessage }
+      ]
+    });
+    return;
+  }
+
   const results = await sendAppointmentNotifications(messages);
   await createNotificationLogs({
     appointmentId: appointment.id,
@@ -122,6 +154,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
   const period = parsePeriod(getFirstValue(params.period));
   const today = getBusinessDayRange(new Date());
   const where = buildAppointmentWhere(status, period, today);
+  const whatsappState = getWhatsappConnectionState();
 
   const [appointments, todayTotal, pendingTotal, confirmedTotal, completedTotal, cancelledTotal] = await Promise.all([
     prisma.appointment.findMany({
@@ -175,6 +208,15 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
           </div>
         </div>
       </div>
+
+      {process.env.WHATSAPP_MODE === "baileys" && whatsappState.status !== "CONNECTED" && (
+        <div className="flex gap-3 rounded-[18px] border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm shadow-amber-500/10">
+          <BellRing aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            O status dos agendamentos muda normalmente. Como o WhatsApp nao esta conectado, as notificacoes ficam registradas como falha e podem ser reenviadas depois.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <MetricCard icon={CalendarClock} label="Hoje" value={todayTotal} helper="Agendamentos do dia" tone="blue" />
