@@ -10,23 +10,29 @@ type BrandLogoProps = {
 const sizes = {
   sm: {
     icon: "h-10 w-10",
-    agenda: "text-[22px]",
-    praJa: "text-[24px]",
-    lines: "w-8 gap-1",
+    agenda: "text-[27px]",
+    praJa: "text-[30px]",
+    lines: "mb-1.5 w-9 gap-1",
+    lineHeight: "h-1.5",
+    secondLine: "-mt-1",
     gap: "gap-2.5"
   },
   md: {
     icon: "h-12 w-12",
-    agenda: "text-[30px]",
-    praJa: "text-[32px]",
-    lines: "w-10 gap-1.5",
+    agenda: "text-[38px]",
+    praJa: "text-[42px]",
+    lines: "mb-2 w-12 gap-1.5",
+    lineHeight: "h-2",
+    secondLine: "-mt-1.5",
     gap: "gap-3"
   },
   lg: {
     icon: "h-16 w-16",
-    agenda: "text-[42px] md:text-[48px]",
-    praJa: "text-[44px] md:text-[50px]",
-    lines: "w-12 gap-1.5",
+    agenda: "text-[52px] md:text-[64px]",
+    praJa: "text-[58px] md:text-[72px]",
+    lines: "mb-3 w-16 gap-2",
+    lineHeight: "h-2.5",
+    secondLine: "-mt-2.5",
     gap: "gap-4"
   }
 };
@@ -41,18 +47,28 @@ export function BrandLogo({ className, iconClassName, wordmarkClassName, size = 
         alt=""
         className={cn("shrink-0 object-contain", current.icon, iconClassName)}
       />
-      <div className={cn("font-display leading-none tracking-normal", wordmarkClassName)}>
-        <div className={cn("font-extrabold text-[#082F8B]", current.agenda)}>Agenda</div>
-        <div className="mt-0.5 flex items-center">
-          <span className={cn("mr-2 flex flex-col", current.lines)} aria-hidden="true">
-            <span className="h-1.5 w-full rounded-full bg-gradient-to-r from-[#0F5EF7] to-[#38BDF8]" />
-            <span className="h-1.5 w-3/4 rounded-full bg-gradient-to-r from-[#0F5EF7] to-[#38BDF8]" />
-            <span className="h-1.5 w-1/2 rounded-full bg-gradient-to-r from-[#0F5EF7] to-[#38BDF8]" />
+      <div className={cn("font-display select-none leading-none tracking-normal", wordmarkClassName)}>
+        <div className={cn("font-black leading-[0.88] text-[#082F8B]", current.agenda)}>Agenda</div>
+        <div className={cn("flex items-end", current.secondLine)}>
+          <span className={cn("mr-3 flex shrink-0 flex-col items-end", current.lines)} aria-hidden="true">
+            <span className={cn("w-3/4 rounded-full bg-gradient-to-r from-[#0F5EF7] to-[#38BDF8]", current.lineHeight)} />
+            <span className={cn("w-full rounded-full bg-gradient-to-r from-[#0F5EF7] to-[#38BDF8]", current.lineHeight)} />
+            <span className={cn("w-5/6 rounded-full bg-gradient-to-r from-[#0F5EF7] to-[#38BDF8]", current.lineHeight)} />
           </span>
-          <span className={cn("font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#0F5EF7] to-[#38BDF8]", current.praJa)}>
+          <span
+            className={cn(
+              "inline-block -skew-x-6 bg-gradient-to-r from-[#0F5EF7] to-[#38BDF8] bg-clip-text font-black leading-[0.88] text-transparent",
+              current.praJa
+            )}
+          >
             Pra
           </span>
-          <span className={cn("ml-1 font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#22C55E] to-[#4ADE80]", current.praJa)}>
+          <span
+            className={cn(
+              "ml-2 inline-block -skew-x-6 bg-gradient-to-r from-[#22C55E] to-[#4ADE80] bg-clip-text font-black leading-[0.88] text-transparent",
+              current.praJa
+            )}
+          >
             Já
           </span>
         </div>
