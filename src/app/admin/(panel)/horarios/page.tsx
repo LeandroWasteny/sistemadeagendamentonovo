@@ -29,20 +29,30 @@ async function createSchedule(formData: FormData) {
     }
   });
   revalidatePath("/admin/horarios");
+  revalidatePath("/agendar");
 }
 
 async function deleteSchedule(formData: FormData) {
   "use server";
   await prisma.professionalSchedule.delete({ where: { id: String(formData.get("id")) } });
   revalidatePath("/admin/horarios");
+  revalidatePath("/agendar");
 }
 
 export default async function SchedulesPage() {
   const [professionals, schedules] = await Promise.all([
-    prisma.professional.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    prisma.professional.findMany({
+      where: { active: true },
+      include: { services: { include: { service: true } } },
+      orderBy: { name: "asc" }
+    }),
     prisma.professionalSchedule.findMany({
-      include: { professional: true },
-      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }]
+      include: {
+        professional: {
+          include: { services: { include: { service: true } } }
+        }
+      },
+      orderBy: [{ professional: { name: "asc" } }, { dayOfWeek: "asc" }, { startTime: "asc" }]
     })
   ]);
 
@@ -54,7 +64,9 @@ export default async function SchedulesPage() {
         <div className="mt-4 space-y-3">
           <Select name="professionalId" required>
             {professionals.map((professional) => (
-              <option key={professional.id} value={professional.id}>{professional.name}</option>
+              <option key={professional.id} value={professional.id}>
+                {professional.name} - {professional.services.map((item) => item.service.name).join(", ") || "sem servico vinculado"}
+              </option>
             ))}
           </Select>
           <Select name="dayOfWeek" required>
@@ -85,6 +97,18 @@ export default async function SchedulesPage() {
                 <p className="text-sm text-slate-500">
                   {days.find((day) => day.value === schedule.dayOfWeek)?.label}: {schedule.startTime} ate {schedule.endTime}, intervalo {schedule.intervalMinutes} min
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {schedule.professional.services.map((item) => (
+                    <span key={item.serviceId} className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-[#0F5EF7]">
+                      {item.service.name}
+                    </span>
+                  ))}
+                  {schedule.professional.services.length === 0 && (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                      sem servico vinculado
+                    </span>
+                  )}
+                </div>
               </div>
               <form action={deleteSchedule}>
                 <input type="hidden" name="id" value={schedule.id} />

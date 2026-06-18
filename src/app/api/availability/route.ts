@@ -12,7 +12,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Parametros invalidos." }, { status: 400 });
   }
 
-  const service = await prisma.service.findUnique({ where: { id: serviceId } });
+  const service = await prisma.service.findFirst({
+    where: {
+      id: serviceId,
+      active: true,
+      professionals: { some: { professionalId, professional: { active: true } } }
+    }
+  });
   if (!service) return NextResponse.json({ error: "Servico nao encontrado." }, { status: 404 });
 
   const [schedules, appointments] = await Promise.all([
@@ -42,4 +48,3 @@ export async function GET(request: Request) {
     }))
   });
 }
-

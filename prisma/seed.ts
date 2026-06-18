@@ -36,7 +36,7 @@ async function main() {
     }
   });
 
-  await prisma.service.upsert({
+  const escova = await prisma.service.upsert({
     where: { id: "seed-service-escova" },
     update: {},
     create: {
@@ -59,6 +59,26 @@ async function main() {
     }
   });
 
+  const bianca = await prisma.professional.upsert({
+    where: { id: "seed-professional-bianca" },
+    update: {},
+    create: {
+      id: "seed-professional-bianca",
+      name: "Bianca Lima",
+      phone: "85977776666",
+      specialties: "Escovas, finalizacao e tratamentos"
+    }
+  });
+
+  await prisma.professionalService.createMany({
+    data: [
+      { professionalId: camila.id, serviceId: corte.id },
+      { professionalId: camila.id, serviceId: escova.id },
+      { professionalId: bianca.id, serviceId: escova.id }
+    ],
+    skipDuplicates: true
+  });
+
   await prisma.professionalSchedule.createMany({
     data: [1, 2, 3, 4, 5].map((dayOfWeek) => ({
       professionalId: camila.id,
@@ -66,6 +86,17 @@ async function main() {
       startTime: "09:00",
       endTime: "18:00",
       intervalMinutes: corte.durationMinutes
+    })),
+    skipDuplicates: true
+  });
+
+  await prisma.professionalSchedule.createMany({
+    data: [2, 3, 4, 5, 6].map((dayOfWeek) => ({
+      professionalId: bianca.id,
+      dayOfWeek,
+      startTime: "10:00",
+      endTime: "17:00",
+      intervalMinutes: escova.durationMinutes
     })),
     skipDuplicates: true
   });

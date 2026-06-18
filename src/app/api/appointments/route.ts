@@ -21,12 +21,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Dados invalidos." }, { status: 400 });
   }
 
-  const [service, professional] = await Promise.all([
-    prisma.service.findUnique({ where: { id: input.data.serviceId } }),
-    prisma.professional.findUnique({ where: { id: input.data.professionalId } })
+  const [service, professional, professionalService] = await Promise.all([
+    prisma.service.findFirst({ where: { id: input.data.serviceId, active: true } }),
+    prisma.professional.findFirst({ where: { id: input.data.professionalId, active: true } }),
+    prisma.professionalService.findUnique({
+      where: {
+        professionalId_serviceId: {
+          professionalId: input.data.professionalId,
+          serviceId: input.data.serviceId
+        }
+      }
+    })
   ]);
 
-  if (!service || !professional) {
+  if (!service || !professional || !professionalService) {
     return NextResponse.json({ error: "Servico ou profissional indisponivel." }, { status: 404 });
   }
 

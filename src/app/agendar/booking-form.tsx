@@ -13,12 +13,14 @@ type ServiceOption = {
   name: string;
   durationMinutes: number;
   priceCents: number;
+  professionalIds: string[];
 };
 
 type ProfessionalOption = {
   id: string;
   name: string;
   specialties: string;
+  serviceIds: string[];
 };
 
 type Slot = {
@@ -47,9 +49,26 @@ export function BookingForm({
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const selectedService = services.find((service) => service.id === serviceId);
+  const compatibleProfessionals = useMemo(() => {
+    if (!selectedService) return [];
+    return professionals.filter((professional) => selectedService.professionalIds.includes(professional.id));
+  }, [professionals, selectedService]);
 
   useEffect(() => {
-    if (!serviceId || !professionalId || !date) return;
+    if (!serviceId) return;
+    const compatible = professionals.filter((professional) => professional.serviceIds.includes(serviceId));
+    if (!compatible.some((professional) => professional.id === professionalId)) {
+      setProfessionalId(compatible[0]?.id ?? "");
+    }
+  }, [professionals, professionalId, serviceId]);
+
+  useEffect(() => {
+    if (!serviceId || !professionalId || !date) {
+      setSlots([]);
+      setSlot("");
+      return;
+    }
     setLoadingSlots(true);
     setSlot("");
     fetch(`/api/availability?serviceId=${serviceId}&professionalId=${professionalId}&date=${date}`)
@@ -87,8 +106,7 @@ export function BookingForm({
     }
     if (response.ok) setSlot("");
   }
-
-  const selectedService = services.find((service) => service.id === serviceId);
+  const hasCompatibleProfessionals = compatibleProfessionals.length > 0;
 
   return (
     <form
@@ -134,8 +152,9 @@ export function BookingForm({
         </label>
         <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
           Profissional
-          <Select value={professionalId} onChange={(event) => setProfessionalId(event.target.value)} required>
-            {professionals.map((professional) => (
+          <Select value={professionalId} onChange={(event) => setProfessionalId(event.target.value)} required disabled={!hasCompatibleProfessionals}>
+            {!hasCompatibleProfessionals && <option value="">Nenhuma profissional atende este servico</option>}
+            {compatibleProfessionals.map((professional) => (
               <option key={professional.id} value={professional.id}>
                 {professional.name}
               </option>
@@ -148,8 +167,8 @@ export function BookingForm({
         </label>
         <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
           Horario
-          <Select value={slot} onChange={(event) => setSlot(event.target.value)} required>
-            <option value="">{loadingSlots ? "Carregando..." : "Selecione"}</option>
+          <Select value={slot} onChange={(event) => setSlot(event.target.value)} required disabled={!hasCompatibleProfessionals}>
+            <option value="">{loadingSlots ? "Carregando..." : hasCompatibleProfessionals ? "Selecione" : "Sem profissional"}</option>
             {slots.map((item) => (
               <option key={item.startsAt} value={item.startsAt}>
                 {item.time}

@@ -7,8 +7,24 @@ export const dynamic = "force-dynamic";
 
 export default async function BookingPage() {
   const [services, professionals] = await Promise.all([
-    prisma.service.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
-    prisma.professional.findMany({ where: { active: true }, orderBy: { name: "asc" } })
+    prisma.service.findMany({
+      where: { active: true },
+      include: {
+        professionals: {
+          where: { professional: { active: true } },
+          select: { professionalId: true }
+        }
+      },
+      orderBy: { name: "asc" }
+    }),
+    prisma.professional.findMany({
+      where: {
+        active: true,
+        services: { some: { service: { active: true } } }
+      },
+      include: { services: { select: { serviceId: true } } },
+      orderBy: { name: "asc" }
+    })
   ]);
 
   return (
@@ -60,12 +76,14 @@ export default async function BookingPage() {
             id: service.id,
             name: service.name,
             durationMinutes: service.durationMinutes,
-            priceCents: service.priceCents
+            priceCents: service.priceCents,
+            professionalIds: service.professionals.map((item) => item.professionalId)
           }))}
           professionals={professionals.map((professional) => ({
             id: professional.id,
             name: professional.name,
-            specialties: professional.specialties
+            specialties: professional.specialties,
+            serviceIds: professional.services.map((item) => item.serviceId)
           }))}
         />
       </section>

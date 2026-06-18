@@ -19,6 +19,7 @@ async function createService(formData: FormData) {
     }
   });
   revalidatePath("/admin/servicos");
+  revalidatePath("/agendar");
 }
 
 async function toggleService(formData: FormData) {
@@ -28,6 +29,7 @@ async function toggleService(formData: FormData) {
     data: { active: formData.get("active") === "true" }
   });
   revalidatePath("/admin/servicos");
+  revalidatePath("/agendar");
 }
 
 async function updateService(formData: FormData) {
@@ -42,16 +44,21 @@ async function updateService(formData: FormData) {
     }
   });
   revalidatePath("/admin/servicos");
+  revalidatePath("/agendar");
 }
 
 async function deleteService(formData: FormData) {
   "use server";
   await prisma.service.delete({ where: { id: String(formData.get("id")) } });
   revalidatePath("/admin/servicos");
+  revalidatePath("/agendar");
 }
 
 export default async function ServicesPage() {
-  const services = await prisma.service.findMany({ orderBy: { createdAt: "desc" } });
+  const services = await prisma.service.findMany({
+    include: { professionals: { include: { professional: true } } },
+    orderBy: { createdAt: "desc" }
+  });
 
   return (
     <section className="grid gap-6 lg:grid-cols-[380px_1fr]">
@@ -99,7 +106,17 @@ export default async function ServicesPage() {
                 <Button variant="secondary">Atualizar</Button>
               </form>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-[#0F5EF7]">{formatCurrency(service.priceCents)} - {service.active ? "ativo" : "inativo"}</p>
+                <div className="flex flex-wrap gap-2">
+                  <p className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-[#0F5EF7]">{formatCurrency(service.priceCents)} - {service.active ? "ativo" : "inativo"}</p>
+                  {service.professionals.map((item) => (
+                    <p key={item.professionalId} className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-[#22C55E]">
+                      {item.professional.name}
+                    </p>
+                  ))}
+                  {service.professionals.length === 0 && (
+                    <p className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">sem profissional</p>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <form action={toggleService}>
                     <input type="hidden" name="id" value={service.id} />
