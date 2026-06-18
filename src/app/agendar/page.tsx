@@ -1,5 +1,6 @@
-import { ArrowRight, BadgeCheck, BellRing, CalendarClock } from "lucide-react";
-import { BrandLogo } from "@/components/brand/brand-logo";
+import { Camera, MapPin, MessageCircle } from "lucide-react";
+import type { CSSProperties } from "react";
+import { publicBookingProfile } from "@/lib/booking/public-profile";
 import { prisma } from "@/lib/prisma";
 import { BookingForm } from "./booking-form";
 
@@ -27,54 +28,80 @@ export default async function BookingPage() {
     })
   ]);
 
+  const profile = publicBookingProfile;
+  const themeStyle = {
+    "--booking-primary": profile.palette.primary,
+    "--booking-primary-dark": profile.palette.primaryDark,
+    "--booking-accent": profile.palette.accent,
+    "--booking-accent-soft": profile.palette.accentSoft,
+    "--booking-bg": profile.palette.background,
+    "--booking-surface": profile.palette.surface,
+    "--booking-text": profile.palette.text,
+    "--booking-muted": profile.palette.muted
+  } as CSSProperties;
+
   return (
-    <main className="min-h-screen overflow-hidden bg-[linear-gradient(135deg,#ffffff_0%,#f4f9ff_45%,#eefcf5_100%)] px-4 py-6 text-[#082F8B] md:py-8">
-      <section className="mx-auto grid max-w-7xl gap-6 lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
-        <div className="relative flex flex-col justify-center py-4">
-          <BrandLogo size="lg" className="mb-8" />
-
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1 text-sm font-semibold text-[#0F5EF7] shadow-sm">
-            <CalendarClock className="h-4 w-4" />
-            Agendamento online instantaneo
+    <main
+      className="min-h-screen bg-[var(--booking-bg)] px-3 py-4 text-[var(--booking-text)] sm:px-4 md:py-6"
+      style={themeStyle}
+    >
+      <section className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[320px_1fr]">
+        <aside className="rounded-[24px] bg-[var(--booking-primary-dark)] p-3 text-white shadow-2xl shadow-blue-950/15 sm:rounded-[28px] sm:p-4 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:min-h-[640px]">
+          <div className="flex items-center gap-3 rounded-[20px] bg-white/95 p-2.5 text-[var(--booking-text)] sm:rounded-[22px] sm:p-3">
+            <img
+              src={profile.logoUrl}
+              alt={profile.businessName}
+              width={56}
+              height={56}
+              className="h-12 w-12 shrink-0 rounded-[16px] object-contain sm:h-14 sm:w-14 sm:rounded-[18px]"
+            />
+            <div className="min-w-0">
+              <h1 className="font-display truncate text-xl font-semibold">{profile.businessName}</h1>
+              <p className="text-sm font-medium text-[var(--booking-muted)]">{profile.tagline}</p>
+            </div>
           </div>
 
-          <h1 className="font-display mt-5 max-w-2xl text-4xl font-semibold leading-tight text-[#082F8B] md:text-5xl">
-            Reserve seu horario em poucos cliques.
-          </h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-slate-600">
-            Escolha o servico, a profissional e receba a confirmacao no WhatsApp com uma experiencia rapida e organizada.
-          </p>
-
-          <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
-            {[
-              { label: "Escolha", icon: ArrowRight },
-              { label: "Confirme", icon: BadgeCheck },
-              { label: "Receba aviso", icon: BellRing }
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.label} className="flex items-center gap-2 rounded-[16px] border border-blue-100 bg-white/85 px-3 py-3 shadow-sm">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-blue-50 text-[#0F5EF7]">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="text-sm font-semibold">{item.label}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-8 hidden max-w-lg rounded-[18px] border border-emerald-100 bg-white/80 p-4 shadow-sm md:block">
-            <p className="text-sm font-semibold text-[#22C55E]">Confirmacao automatica</p>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Cliente e profissional ficam alinhados pelo WhatsApp assim que o agendamento e criado.
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:grid-cols-1">
+            <a
+              href={profile.whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-11 items-center gap-3 rounded-[16px] bg-white/10 px-3 text-sm font-semibold transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <MessageCircle aria-hidden className="h-4 w-4" />
+              WhatsApp
+            </a>
+            <a
+              href={profile.instagramUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-11 items-center gap-3 rounded-[16px] bg-white/10 px-3 text-sm font-semibold transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <Camera aria-hidden className="h-4 w-4" />
+              Instagram
+            </a>
+            <p className="hidden items-start gap-3 rounded-[16px] bg-white/10 px-3 py-3 text-sm font-medium leading-5 text-white/85 sm:flex">
+              <MapPin aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+              {profile.address}
             </p>
           </div>
-        </div>
+
+          <div className="mt-4 hidden space-y-2 sm:block">
+            {profile.promotions.map((promotion) => (
+              <div key={promotion.title} className="rounded-[18px] border border-white/10 bg-white/10 p-3">
+                <p className="text-sm font-semibold">{promotion.title}</p>
+                <p className="mt-1 text-xs font-medium text-white/75">{promotion.description}</p>
+              </div>
+            ))}
+          </div>
+        </aside>
 
         <BookingForm
+          profile={profile}
           services={services.map((service) => ({
             id: service.id,
             name: service.name,
+            description: service.description,
             durationMinutes: service.durationMinutes,
             priceCents: service.priceCents,
             professionalIds: service.professionals.map((item) => item.professionalId)
