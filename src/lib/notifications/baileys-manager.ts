@@ -1,3 +1,4 @@
+import { rm } from "fs/promises";
 import pino from "pino";
 import QRCode from "qrcode";
 import type makeWASocket from "baileys";
@@ -60,7 +61,7 @@ export async function startWhatsappConnection() {
   baileysGlobal.baileysManualStop = false;
 
   const { default: makeWASocket, useMultiFileAuthState } = await import("baileys");
-  const authDir = process.env.WHATSAPP_AUTH_DIR ?? "baileys-auth";
+  const authDir = getAuthDir();
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const socket = makeWASocket({
     auth: state,
@@ -126,6 +127,18 @@ export async function stopWhatsappConnection() {
   return getState();
 }
 
+export async function resetWhatsappConnection() {
+  await stopWhatsappConnection();
+  await clearAuthState();
+  setState({
+    status: "DISCONNECTED",
+    qr: undefined,
+    qrImage: undefined,
+    message: "Sessao antiga removida. Clique em conectar para gerar um novo QR Code."
+  });
+  return getState();
+}
+
 export async function sendWithBaileys(message: WhatsappMessage) {
   const socket = await waitForConnectedSocket();
   const jid = await resolveRecipientJid(socket, message.to);
@@ -178,4 +191,12 @@ function maskPhone(phone: string) {
   const digits = phone.replace(/\D/g, "");
   if (digits.length <= 4) return "****";
   return `${digits.slice(0, 4)}****${digits.slice(-2)}`;
+}
+
+function getAuthDir() {
+  return process.env.WHATSAPP_AUTH_DIR ?? "baileys-auth";
+}
+
+async function clearAuthState() {
+  await rm(getAuthDir(), { recursive: true, force: true });
 }

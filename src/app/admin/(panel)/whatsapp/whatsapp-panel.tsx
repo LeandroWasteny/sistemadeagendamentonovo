@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Plug, RefreshCw, Send, Unplug } from "lucide-react";
+import { Loader2, Plug, RefreshCw, RotateCcw, Send, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +32,13 @@ export function WhatsappPanel() {
   }
 
   async function disconnect() {
+    setLoading(true);
+    const response = await fetch("/api/admin/whatsapp", { method: "DELETE" });
+    setState(await response.json());
+    setLoading(false);
+  }
+
+  async function resetSession() {
     setLoading(true);
     const response = await fetch("/api/admin/whatsapp", { method: "DELETE" });
     setState(await response.json());
@@ -85,6 +92,10 @@ export function WhatsappPanel() {
           <Button variant="danger" className="gap-2" onClick={disconnect} disabled={loading}>
             <Unplug className="h-4 w-4" />
             Desconectar
+          </Button>
+          <Button variant="secondary" className="gap-2" onClick={resetSession} disabled={loading}>
+            <RotateCcw className="h-4 w-4" />
+            Nova sessao
           </Button>
         </div>
       </div>
