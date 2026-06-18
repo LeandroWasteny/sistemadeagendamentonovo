@@ -6,10 +6,10 @@ import { destroySession } from "@/lib/auth/session";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: Home },
+  { href: "/admin/agendamentos", label: "Agendamentos", icon: CalendarDays },
   { href: "/admin/servicos", label: "Servicos", icon: Scissors },
   { href: "/admin/profissionais", label: "Profissionais", icon: Users },
   { href: "/admin/horarios", label: "Horarios", icon: Clock },
-  { href: "/admin/agendamentos", label: "Agendamentos", icon: CalendarDays },
   { href: "/admin/relatorios", label: "Relatorios", icon: BarChart3 },
   { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle }
 ];
@@ -36,17 +36,17 @@ export function AdminNav() {
             <Link
               key={link.href}
               href={link.href}
-              className="flex items-center gap-2 rounded-[12px] px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-[#0F5EF7]"
+              className="flex items-center gap-2 rounded-[12px] px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-[#0F5EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
             >
-              <Icon className="h-4 w-4" />
+              <Icon aria-hidden className="h-4 w-4" />
               {link.label}
             </Link>
           );
         })}
       </nav>
       <form action={logout} className="px-3 pb-4">
-        <button className="flex w-full items-center gap-2 rounded-[12px] px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-[#0F5EF7]">
-          <LogOut className="h-4 w-4" />
+        <button className="flex w-full items-center gap-2 rounded-[12px] px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-[#0F5EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2">
+          <LogOut aria-hidden className="h-4 w-4" />
           Sair
         </button>
       </form>
