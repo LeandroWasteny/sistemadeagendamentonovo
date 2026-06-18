@@ -10,13 +10,89 @@
   --brand-muted: #f3f4f6;
   --background: #f7f9fd;
   --foreground: #082f8b;
+  --app-bg: linear-gradient(135deg, #ffffff 0%, #f7f9fd 52%, #eefcf5 100%);
+  --app-text: #082f8b;
+  --surface: rgba(255, 255, 255, 0.96);
+  --surface-strong: #ffffff;
+  --surface-muted: #f3f7ff;
+  --surface-tint: rgba(239, 246, 255, 0.72);
+  --border-soft: #dbeafe;
+  --border-strong: rgba(15, 94, 247, 0.18);
+  --text-strong: #082f8b;
+  --text-muted: #64748b;
+  --text-soft: #94a3b8;
+  --accent-soft: #eff6ff;
+  --sidebar-bg: linear-gradient(180deg, #eef7ff 0%, #e6f0ff 100%);
+  --sidebar-border: rgba(15, 94, 247, 0.18);
+  --sidebar-text: #334155;
+  --sidebar-muted: #64748b;
+  --sidebar-heading: #0f5ef7;
+  --sidebar-active-bg: #ffffff;
+  --sidebar-active-text: #0f5ef7;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.72);
+  --focus-ring: #0f5ef7;
+  --shadow-soft: rgba(8, 47, 139, 0.08);
+  color-scheme: light;
+}
+
+[data-theme="mixed"] {
+  --background: #f7f9fd;
+  --foreground: #082f8b;
+  --app-bg: linear-gradient(135deg, #ffffff 0%, #f7f9fd 52%, #eefcf5 100%);
+  --app-text: #082f8b;
+  --surface: rgba(255, 255, 255, 0.96);
+  --surface-strong: #ffffff;
+  --surface-muted: #f3f7ff;
+  --surface-tint: rgba(239, 246, 255, 0.72);
+  --border-soft: #dbeafe;
+  --border-strong: rgba(15, 94, 247, 0.18);
+  --text-strong: #082f8b;
+  --text-muted: #64748b;
+  --text-soft: #94a3b8;
+  --accent-soft: #eff6ff;
+  --sidebar-bg: linear-gradient(180deg, #082f8b 0%, #061f66 52%, #04184f 100%);
+  --sidebar-border: rgba(56, 189, 248, 0.2);
+  --sidebar-text: #dbeafe;
+  --sidebar-muted: #a8c7f7;
+  --sidebar-heading: #7dd3fc;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.12);
+  --sidebar-active-text: #ffffff;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.09);
+  --shadow-soft: rgba(8, 47, 139, 0.1);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --background: #061126;
+  --foreground: #eaf2ff;
+  --app-bg: linear-gradient(135deg, #040b19 0%, #061126 54%, #08231e 100%);
+  --app-text: #eaf2ff;
+  --surface: rgba(11, 23, 50, 0.96);
+  --surface-strong: #101f3d;
+  --surface-muted: #111e36;
+  --surface-tint: rgba(15, 94, 247, 0.12);
+  --border-soft: rgba(148, 163, 184, 0.2);
+  --border-strong: rgba(56, 189, 248, 0.3);
+  --text-strong: #f8fbff;
+  --text-muted: #b7c4d9;
+  --text-soft: #8fa2bd;
+  --accent-soft: rgba(15, 94, 247, 0.16);
+  --sidebar-bg: linear-gradient(180deg, #020817 0%, #061126 100%);
+  --sidebar-border: rgba(56, 189, 248, 0.16);
+  --sidebar-text: #dbeafe;
+  --sidebar-muted: #93a9c8;
+  --sidebar-heading: #7dd3fc;
+  --sidebar-active-bg: rgba(15, 94, 247, 0.22);
+  --sidebar-active-text: #ffffff;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.08);
+  --shadow-soft: rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
-  background:
-    linear-gradient(180deg, #ffffff 0%, var(--background) 42%, #eef7ff 100%);
-  color: var(--foreground);
+  background: var(--app-bg);
+  color: var(--app-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -35,4 +111,52 @@ h3,
 ::selection {
   background: rgba(15, 94, 247, 0.16);
   color: var(--brand-primary-dark);
+}
+
+[data-theme="dark"] ::selection {
+  background: rgba(56, 189, 248, 0.28);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-white\/80,
+[data-theme="dark"] .bg-white\/85,
+[data-theme="dark"] .bg-white\/95 {
+  background-color: var(--surface) !important;
+}
+
+[data-theme="dark"] .border-white,
+[data-theme="dark"] .border-blue-50,
+[data-theme="dark"] .border-blue-100 {
+  border-color: var(--border-soft) !important;
+}
+
+[data-theme="dark"] .bg-\[\#F3F4F6\],
+[data-theme="dark"] .bg-blue-50,
+[data-theme="dark"] .bg-blue-50\/35,
+[data-theme="dark"] .bg-blue-50\/40,
+[data-theme="dark"] .bg-blue-50\/50,
+[data-theme="dark"] .bg-blue-50\/60,
+[data-theme="dark"] .bg-blue-50\/70,
+[data-theme="dark"] .bg-emerald-50,
+[data-theme="dark"] .bg-sky-50 {
+  background-color: var(--surface-muted) !important;
+}
+
+[data-theme="dark"] .text-\[\#082F8B\],
+[data-theme="dark"] .text-slate-700 {
+  color: var(--text-strong) !important;
+}
+
+[data-theme="dark"] .text-slate-400,
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-600 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color: var(--text-strong);
+  background-color: var(--surface-strong);
 }

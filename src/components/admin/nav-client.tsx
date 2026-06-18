@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
@@ -12,7 +13,10 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  Moon,
+  Palette,
   Scissors,
+  Sun,
   Users
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -49,15 +53,24 @@ const groups = [
   }
 ];
 
+const themeOptions = [
+  { value: "light", label: "Claro", icon: Sun },
+  { value: "mixed", label: "Misto", icon: Palette },
+  { value: "dark", label: "Escuro", icon: Moon }
+];
+
 export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loadedPreference, setLoadedPreference] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setCollapsed(localStorage.getItem("agenda-admin-nav-collapsed") === "true");
     setLoadedPreference(true);
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -82,6 +95,15 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
 
   const navGroups = useMemo(() => groups, []);
   const navId = "admin-sidebar-navigation";
+  const activeTheme = mounted ? theme ?? "light" : "light";
+  const currentTheme = themeOptions.find((option) => option.value === activeTheme) ?? themeOptions[0];
+  const CurrentThemeIcon = currentTheme.icon;
+
+  function cycleTheme() {
+    const currentIndex = themeOptions.findIndex((option) => option.value === activeTheme);
+    const nextTheme = themeOptions[(currentIndex + 1) % themeOptions.length];
+    setTheme(nextTheme.value);
+  }
 
   return (
     <>
@@ -93,18 +115,19 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
           onClick={() => setMobileOpen(false)}
         />
       )}
-    <aside
-      className={cn(
-        "relative z-40 border-b border-blue-100 bg-white/95 shadow-sm shadow-blue-950/5 backdrop-blur md:sticky md:top-0 md:flex md:h-screen md:shrink-0 md:flex-col md:border-b-0 md:border-r md:transition-[width] md:duration-200",
-        collapsed ? "md:w-[76px]" : "md:w-[260px]"
-      )}
-    >
+      <aside
+        className={cn(
+          "relative z-40 border-b text-[var(--sidebar-text)] backdrop-blur [background:var(--sidebar-bg)] [box-shadow:0_16px_40px_var(--shadow-soft)] md:sticky md:top-0 md:flex md:h-screen md:shrink-0 md:flex-col md:border-b-0 md:border-r md:transition-[width] md:duration-200",
+          "border-[var(--sidebar-border)]",
+          collapsed ? "md:w-[76px]" : "md:w-[260px]"
+        )}
+      >
       <div className="flex items-center justify-between gap-3 px-4 py-4 md:px-4 md:py-5">
         <Link
           href="/admin"
           className={cn(
             "flex min-w-0 items-center gap-3 rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2",
-            collapsed && "md:justify-center"
+            collapsed ? "md:justify-center" : "bg-white/90 px-2 py-1.5 shadow-sm shadow-blue-950/10"
           )}
           aria-label="Agenda Pra Ja - Central de Gestao"
         >
@@ -120,7 +143,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
         <div className="flex items-center gap-1">
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-[12px] text-slate-600 transition hover:bg-blue-50 hover:text-[#0F5EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-[12px] text-[var(--sidebar-text)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:hidden"
             aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
             aria-expanded={mobileOpen}
             aria-controls={navId}
@@ -130,7 +153,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
           </button>
           <button
             type="button"
-            className="hidden h-10 w-10 items-center justify-center rounded-[12px] text-slate-600 transition hover:bg-blue-50 hover:text-[#0F5EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:inline-flex"
+            className="hidden h-10 w-10 items-center justify-center rounded-[12px] text-[var(--sidebar-text)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:inline-flex"
             aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
             aria-expanded={!collapsed}
             aria-controls={navId}
@@ -143,8 +166,8 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
 
       {!collapsed && (
         <div className="hidden px-4 pb-3 md:block">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0F5EF7]">Central de Gestao</p>
-          <p className="mt-1 text-xs font-medium text-slate-400">Agenda Pra Ja</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--sidebar-heading)]">Central de Gestao</p>
+          <p className="mt-1 text-xs font-medium text-[var(--sidebar-muted)]">Agenda Pra Ja</p>
         </div>
       )}
 
@@ -160,7 +183,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
           {navGroups.map((group) => (
             <div key={group.label}>
               {!collapsed && (
-                <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--sidebar-muted)]">
                   {group.label}
                 </p>
               )}
@@ -179,14 +202,14 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
                         "group relative flex h-11 items-center gap-3 rounded-[14px] px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2",
                         collapsed && "md:justify-center md:px-0",
                         active
-                          ? "bg-blue-50 text-[#0F5EF7]"
-                          : "text-slate-600 hover:bg-blue-50 hover:text-[#0F5EF7]"
+                          ? "bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)]"
+                          : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)]"
                       )}
                     >
                       {active && !collapsed && (
                         <span className="absolute left-0 h-6 w-1 rounded-r-full bg-[#0F5EF7]" aria-hidden="true" />
                       )}
-                      <Icon aria-hidden className={cn("h-4 w-4 shrink-0", active ? "text-[#0F5EF7]" : "text-slate-500 group-hover:text-[#0F5EF7]")} />
+                      <Icon aria-hidden className={cn("h-4 w-4 shrink-0", active ? "text-[var(--sidebar-active-text)]" : "text-[var(--sidebar-muted)] group-hover:text-[var(--sidebar-active-text)]")} />
                       {!collapsed && <span className="truncate">{link.label}</span>}
                     </Link>
                   );
@@ -197,13 +220,54 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
         </div>
       </nav>
 
+      <div className={cn("px-3 pb-3", mobileOpen ? "block" : "hidden md:block")}>
+        {!collapsed ? (
+          <div className="rounded-[16px] border border-[var(--sidebar-border)] bg-[var(--sidebar-hover-bg)] p-2">
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--sidebar-muted)]">Tema</p>
+            <div className="grid grid-cols-3 gap-1">
+              {themeOptions.map((option) => {
+                const Icon = option.icon;
+                const active = option.value === activeTheme;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={cn(
+                      "inline-flex h-9 items-center justify-center gap-1.5 rounded-[12px] text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2",
+                      active
+                        ? "bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-sm"
+                        : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)]"
+                    )}
+                    aria-pressed={active}
+                    onClick={() => setTheme(option.value)}
+                  >
+                    <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                    <span>{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="hidden h-11 w-full items-center justify-center rounded-[14px] text-[var(--sidebar-text)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2 md:inline-flex"
+            title={`Tema: ${currentTheme.label}`}
+            aria-label={`Alternar tema. Atual: ${currentTheme.label}`}
+            onClick={cycleTheme}
+          >
+            <CurrentThemeIcon aria-hidden className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       <form
         action={logoutAction}
         className={cn("px-3 pb-4", mobileOpen ? "block" : "hidden md:block")}
       >
         <button
           className={cn(
-            "flex h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-[#0F5EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2",
+            "flex h-11 w-full items-center gap-3 rounded-[14px] px-3 text-sm font-semibold text-[var(--sidebar-text)] transition hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-active-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2",
             collapsed && "md:justify-center md:px-0"
           )}
           title={collapsed ? "Sair" : undefined}
