@@ -5,8 +5,7 @@ export const metadata: Metadata = {
   title: "Agenda Pra Já",
   description: "Agendamento online rapido com painel administrativo e notificacoes por WhatsApp",
   icons: {
-    icon: "/brand/logo.svg",
-    apple: "/brand/logo-icon.png"
+    icon: "/brand/logo.svg"
   }
 };
 

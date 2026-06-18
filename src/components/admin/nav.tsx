@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CalendarDays, Clock, Home, LogOut, MessageCircle, Scissors, Users } from "lucide-react";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { destroySession } from "@/lib/auth/session";
 
 const links = [
@@ -23,12 +23,9 @@ export function AdminNav() {
   return (
     <aside className="border-b border-blue-100 bg-white/95 shadow-sm shadow-blue-950/5 backdrop-blur md:min-h-screen md:w-72 md:border-b-0 md:border-r">
       <div className="px-5 py-5">
-        <Link href="/admin" className="flex items-center gap-3">
-          <Image src="/brand/logo-icon.png" alt="Agenda Pra Já" width={44} height={44} className="h-11 w-11 rounded-[14px] object-contain" />
-          <div>
-            <p className="text-xs font-semibold uppercase text-[#0F5EF7]">Painel admin</p>
-            <Image src="/brand/wordmark.png" alt="Agenda Pra Já" width={146} height={56} className="mt-1 h-auto w-32 object-contain" />
-          </div>
+        <Link href="/admin" className="block">
+          <p className="mb-3 text-xs font-semibold uppercase text-[#0F5EF7]">Painel admin</p>
+          <BrandLogo size="sm" />
         </Link>
       </div>
       <nav className="flex gap-1 overflow-x-auto px-3 pb-3 md:block md:space-y-1">

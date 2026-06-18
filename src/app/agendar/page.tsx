@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { ArrowRight, BadgeCheck, BellRing, CalendarClock } from "lucide-react";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { prisma } from "@/lib/prisma";
 import { BookingForm } from "./booking-form";
 
@@ -15,24 +15,7 @@ export default async function BookingPage() {
     <main className="min-h-screen overflow-hidden bg-[linear-gradient(135deg,#ffffff_0%,#f4f9ff_45%,#eefcf5_100%)] px-4 py-6 text-[#082F8B] md:py-8">
       <section className="mx-auto grid max-w-7xl gap-6 lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
         <div className="relative flex flex-col justify-center py-4">
-          <div className="mb-8 flex items-center gap-3">
-            <Image
-              src="/brand/logo-icon.png"
-              alt="Agenda Pra Já"
-              width={54}
-              height={54}
-              className="h-12 w-12 rounded-[16px] object-contain"
-              priority
-            />
-            <Image
-              src="/brand/wordmark.png"
-              alt="Agenda Pra Já"
-              width={214}
-              height={82}
-              className="h-auto w-44 object-contain md:w-52"
-              priority
-            />
-          </div>
+          <BrandLogo size="lg" className="mb-8" />
 
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1 text-sm font-semibold text-[#0F5EF7] shadow-sm">
             <CalendarClock className="h-4 w-4" />
@@ -65,7 +48,7 @@ export default async function BookingPage() {
           </div>
 
           <div className="mt-8 hidden max-w-lg items-center gap-4 rounded-[18px] border border-emerald-100 bg-white/80 p-4 shadow-sm md:flex">
-            <Image src="/brand/logo-icon.png" alt="" width={76} height={76} className="h-16 w-16 rounded-[18px] object-contain" />
+            <img src="/brand/logo.svg" alt="" className="h-16 w-16 object-contain" />
             <div>
               <p className="text-sm font-semibold text-[#22C55E]">Confirmacao automatica</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
