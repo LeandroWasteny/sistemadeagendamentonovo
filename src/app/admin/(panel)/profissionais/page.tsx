@@ -26,6 +26,7 @@ async function createProfessional(formData: FormData) {
       });
     }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/profissionais");
   revalidatePath("/agendar");
 }
@@ -36,6 +37,7 @@ async function toggleProfessional(formData: FormData) {
     where: { id: String(formData.get("id")) },
     data: { active: formData.get("active") === "true" }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/profissionais");
   revalidatePath("/agendar");
 }
@@ -61,6 +63,7 @@ async function updateProfessional(formData: FormData) {
       });
     }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/profissionais");
   revalidatePath("/agendar");
 }
@@ -68,6 +71,7 @@ async function updateProfessional(formData: FormData) {
 async function deleteProfessional(formData: FormData) {
   "use server";
   await prisma.professional.delete({ where: { id: String(formData.get("id")) } });
+  revalidatePath("/admin");
   revalidatePath("/admin/profissionais");
   revalidatePath("/agendar");
 }

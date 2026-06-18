@@ -30,6 +30,7 @@ export async function POST(request: Request) {
       active: Boolean(data.active)
     }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/horarios");
   revalidatePath("/agendar");
   return NextResponse.json(schedule);

@@ -28,6 +28,7 @@ async function createSchedule(formData: FormData) {
       active: formData.get("active") === "on"
     }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/horarios");
   revalidatePath("/agendar");
 }
@@ -35,6 +36,7 @@ async function createSchedule(formData: FormData) {
 async function deleteSchedule(formData: FormData) {
   "use server";
   await prisma.professionalSchedule.delete({ where: { id: String(formData.get("id")) } });
+  revalidatePath("/admin");
   revalidatePath("/admin/horarios");
   revalidatePath("/agendar");
 }

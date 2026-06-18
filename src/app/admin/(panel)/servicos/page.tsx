@@ -18,6 +18,7 @@ async function createService(formData: FormData) {
       active: formData.get("active") === "on"
     }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/servicos");
   revalidatePath("/agendar");
 }
@@ -28,6 +29,7 @@ async function toggleService(formData: FormData) {
     where: { id: String(formData.get("id")) },
     data: { active: formData.get("active") === "true" }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/servicos");
   revalidatePath("/agendar");
 }
@@ -43,6 +45,7 @@ async function updateService(formData: FormData) {
       priceCents: Math.round(Number(formData.get("price")) * 100)
     }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/servicos");
   revalidatePath("/agendar");
 }
@@ -50,6 +53,7 @@ async function updateService(formData: FormData) {
 async function deleteService(formData: FormData) {
   "use server";
   await prisma.service.delete({ where: { id: String(formData.get("id")) } });
+  revalidatePath("/admin");
   revalidatePath("/admin/servicos");
   revalidatePath("/agendar");
 }

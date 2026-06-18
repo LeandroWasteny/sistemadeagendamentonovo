@@ -38,6 +38,7 @@ export async function POST(request: Request) {
 
     return created;
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/profissionais");
   revalidatePath("/agendar");
   return NextResponse.json(professional);

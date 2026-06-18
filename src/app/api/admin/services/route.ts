@@ -25,6 +25,7 @@ export async function POST(request: Request) {
       active: Boolean(data.active)
     }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/servicos");
   revalidatePath("/agendar");
   return NextResponse.json(service);
