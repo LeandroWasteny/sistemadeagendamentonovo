@@ -8,6 +8,7 @@ import {
   Clock3,
   Loader2,
   MessageCircle,
+  Search,
   Send,
   UserRound
 } from "lucide-react";
@@ -56,10 +57,10 @@ export function BookingForm({
   services: ServiceOption[];
   professionals: ProfessionalOption[];
 }) {
-  const days = useMemo(() => buildDayOptions(14), []);
+  const days = useMemo(() => buildDayOptions(30), []);
   const firstDay = days[0]?.value ?? "";
 
-  const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
+  const [serviceId, setServiceId] = useState("");
   const [professionalId, setProfessionalId] = useState("");
   const [date, setDate] = useState(firstDay);
   const [slot, setSlot] = useState("");
@@ -67,6 +68,7 @@ export function BookingForm({
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [lookupCode, setLookupCode] = useState("");
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedProfessional = professionals.find((professional) => professional.id === professionalId);
@@ -78,10 +80,13 @@ export function BookingForm({
   }, [professionals, selectedService]);
 
   useEffect(() => {
-    if (!serviceId) return;
+    if (!serviceId) {
+      setProfessionalId("");
+      return;
+    }
     const compatible = professionals.filter((professional) => professional.serviceIds.includes(serviceId));
-    if (!compatible.some((professional) => professional.id === professionalId)) {
-      setProfessionalId(compatible[0]?.id ?? "");
+    if (professionalId && !compatible.some((professional) => professional.id === professionalId)) {
+      setProfessionalId("");
     }
   }, [professionals, professionalId, serviceId]);
 
@@ -114,6 +119,7 @@ export function BookingForm({
   async function handleSubmit(formData: FormData) {
     setSaving(true);
     setMessage("");
+    setLookupCode("");
     const response = await fetch("/api/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -129,20 +135,17 @@ export function BookingForm({
     const data = await response.json();
     setSaving(false);
     if (response.ok) {
-      const failedNotifications = data.notifications?.filter((item: { ok: boolean }) => !item.ok) ?? [];
-      setMessage(
-        failedNotifications.length > 0
-          ? "Agendamento criado. A equipe confirma o WhatsApp se necessario."
-          : "Agendamento confirmado. Voce recebera o resumo no WhatsApp."
-      );
+      setLookupCode(data.lookupCode ?? "");
+      setMessage("Agendamento criado. A confirmacao do WhatsApp sera enviada se a conexao estiver ativa.");
       setSlot("");
     } else {
       setMessage(data.error ?? "Nao foi possivel agendar.");
     }
   }
 
-  const hasCompatibleProfessionals = compatibleProfessionals.length > 0;
+  const hasCompatibleProfessionals = Boolean(selectedService && compatibleProfessionals.length > 0);
   const canSubmit = Boolean(serviceId && professionalId && slot);
+  const selectedDateLabel = selectedDay?.label ?? formatDateLabel(date);
 
   return (
     <form action={handleSubmit} className="rounded-[28px] bg-[var(--booking-surface)] p-4 shadow-2xl shadow-blue-950/10 md:p-6">
@@ -156,6 +159,13 @@ export function BookingForm({
         <div className="rounded-full bg-[var(--booking-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--booking-accent)]">
           Online
         </div>
+        <a
+          href="/agendar/consultar"
+          className="inline-flex h-9 items-center gap-2 rounded-full border border-blue-100 bg-white px-3 text-sm font-semibold text-[var(--booking-primary)] transition hover:border-[var(--booking-primary)] hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]"
+        >
+          <Search aria-hidden className="h-4 w-4" />
+          Meus horarios
+        </a>
       </div>
 
       <ProgressSteps active={slot ? 3 : professionalId ? 2 : serviceId ? 1 : 0} />
@@ -180,7 +190,11 @@ export function BookingForm({
                     ? "border-[var(--booking-primary)] bg-[var(--booking-primary)] text-white shadow-lg shadow-blue-500/20"
                     : "border-blue-100 bg-white text-[var(--booking-text)] hover:border-[var(--booking-primary)] hover:bg-blue-50"
                 )}
-                onClick={() => setServiceId(service.id)}
+                onClick={() => {
+                  setServiceId(service.id);
+                  setProfessionalId("");
+                  setSlot("");
+                }}
                 aria-pressed={active}
               >
                 <span className="flex items-start justify-between gap-3">
@@ -208,7 +222,12 @@ export function BookingForm({
       <section className="mt-6">
         <SectionTitle icon={UserRound} label="Profissional" />
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {!hasCompatibleProfessionals && (
+          {!selectedService && (
+            <p className="rounded-[16px] bg-slate-100 px-4 py-3 text-sm font-medium text-slate-500">
+              Escolha um servico para ver as profissionais.
+            </p>
+          )}
+          {selectedService && !hasCompatibleProfessionals && (
             <p className="rounded-[16px] bg-slate-100 px-4 py-3 text-sm font-medium text-slate-500">
               Nenhuma profissional atende este servico.
             </p>
@@ -271,11 +290,23 @@ export function BookingForm({
             );
           })}
         </div>
+        <label className="mt-3 block space-y-1.5 text-sm font-semibold text-[var(--booking-text)]">
+          Outra data
+          <Input
+            type="date"
+            value={date}
+            min={firstDay}
+            onChange={(event) => {
+              setDate(event.target.value);
+              setSlot("");
+            }}
+          />
+        </label>
 
         <div className="mt-3 rounded-[20px] bg-slate-50 p-3">
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-[var(--booking-text)]">
-              {selectedDay?.label ?? "Escolha uma data"}
+              {selectedDateLabel}
             </p>
             {loadingSlots && <Loader2 aria-hidden className="h-4 w-4 animate-spin text-[var(--booking-primary)]" />}
           </div>
@@ -283,7 +314,7 @@ export function BookingForm({
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {!loadingSlots && slots.length === 0 && (
               <p className="col-span-full rounded-[16px] bg-white px-4 py-4 text-center text-sm font-medium text-slate-500">
-                Sem horarios livres neste dia.
+                {serviceId && professionalId ? "Sem horarios livres neste dia." : "Escolha servico e profissional para ver horarios."}
               </p>
             )}
             {slots.map((item) => {
@@ -354,7 +385,14 @@ export function BookingForm({
           className="mt-4 flex items-center gap-2 rounded-[16px] border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm font-medium text-emerald-700"
         >
           <CheckCircle2 aria-hidden className="h-4 w-4" />
-          {message}
+          <span>
+            {message}
+            {lookupCode && (
+              <span className="mt-1 block text-[var(--booking-text)]">
+                Codigo para consultar depois: <strong>{lookupCode}</strong>
+              </span>
+            )}
+          </span>
         </p>
       )}
     </form>
@@ -416,6 +454,17 @@ function buildDayOptions(length: number): DayOption[] {
         month: "long"
       })
     };
+  });
+}
+
+function formatDateLabel(value: string) {
+  if (!value) return "Escolha uma data";
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return "Escolha uma data";
+  return new Date(year, month - 1, day).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long"
   });
 }
 

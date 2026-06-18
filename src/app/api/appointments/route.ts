@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { calculateAvailableSlots } from "@/lib/availability";
-import { createNotificationLogs } from "@/lib/notifications/logs";
-import { buildAppointmentMessages } from "@/lib/notifications/templates";
-import { sendAppointmentNotifications } from "@/lib/notifications/whatsapp";
+import { getAppointmentLookupCode } from "@/lib/booking/lookup-code";
+import { queueAppointmentNotification } from "@/lib/notifications/queue";
 import { prisma } from "@/lib/prisma";
 
 const appointmentSchema = z.object({
@@ -90,27 +89,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Horario acabou de ser ocupado. Escolha outro horario." }, { status: 409 });
   }
 
-  const messages = buildAppointmentMessages({
-    clientName: appointment.clientName,
-    clientPhone: appointment.clientPhone,
-    professionalName: professional.name,
-    professionalPhone: professional.phone,
-    serviceName: service.name,
-    startsAt: appointment.startsAt,
-    status: appointment.status
-  });
-  const notifications = await sendAppointmentNotifications(messages);
-  await createNotificationLogs({
-    appointmentId: appointment.id,
-    messages,
-    results: notifications
-  });
+  queueAppointmentNotification({ appointment, service, professional });
 
   revalidatePath("/admin");
   revalidatePath("/admin/agendamentos");
   revalidatePath("/admin/relatorios");
 
-  return NextResponse.json({ appointment, notifications });
+  return NextResponse.json({
+    appointment,
+    lookupCode: getAppointmentLookupCode(appointment.id),
+    notifications: { status: "QUEUED" }
+  });
 }
 
 function isUniqueConstraintError(error: unknown) {
