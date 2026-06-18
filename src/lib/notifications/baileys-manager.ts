@@ -114,7 +114,6 @@ export async function stopWhatsappConnection() {
   baileysGlobal.baileysManualStop = true;
   baileysGlobal.baileysSocket = undefined;
   if (socket) {
-    await socket.logout().catch(() => undefined);
     const closableSocket = socket as unknown as { end?: (error?: Error) => void };
     closableSocket.end?.();
   }
@@ -124,6 +123,38 @@ export async function stopWhatsappConnection() {
     qrImage: undefined,
     message: "WhatsApp desconectado."
   });
+  return getState();
+}
+
+export async function logoutWhatsappDevice() {
+  try {
+    const socket = await waitForConnectedSocket(15000);
+    baileysGlobal.baileysManualStop = true;
+    await socket.logout();
+    const closableSocket = socket as unknown as { end?: (error?: Error) => void };
+    closableSocket.end?.();
+    baileysGlobal.baileysSocket = undefined;
+    await clearAuthState();
+    setState({
+      status: "DISCONNECTED",
+      qr: undefined,
+      qrImage: undefined,
+      message: "Logout enviado ao WhatsApp. O aparelho deve sair da lista de dispositivos conectados em alguns segundos."
+    });
+  } catch (error) {
+    await stopWhatsappConnection();
+    await clearAuthState();
+    setState({
+      status: "DISCONNECTED",
+      qr: undefined,
+      qrImage: undefined,
+      message:
+        error instanceof Error
+          ? `Sessao local removida, mas nao foi possivel confirmar logout no celular: ${error.message}`
+          : "Sessao local removida, mas nao foi possivel confirmar logout no celular."
+    });
+  }
+
   return getState();
 }
 

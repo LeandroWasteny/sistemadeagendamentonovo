@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import {
   getWhatsappConnectionState,
+  logoutWhatsappDevice,
   resetWhatsappConnection,
   startWhatsappConnection,
   stopWhatsappConnection
@@ -20,6 +21,9 @@ export async function POST() {
 export async function DELETE(request: Request) {
   await requireAdmin();
   const { searchParams } = new URL(request.url);
+  if (searchParams.get("logout") === "true") {
+    return NextResponse.json(await logoutWhatsappDevice());
+  }
   if (searchParams.get("keepSession") !== "true") {
     return NextResponse.json(await resetWhatsappConnection());
   }

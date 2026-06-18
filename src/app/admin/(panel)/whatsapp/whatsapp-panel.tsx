@@ -41,7 +41,7 @@ export function WhatsappPanel() {
   async function disconnect() {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/whatsapp", { method: "DELETE" });
+      const response = await fetch("/api/admin/whatsapp?logout=true", { method: "DELETE" });
       setState(await response.json());
     } finally {
       setLoading(false);
@@ -114,6 +114,9 @@ export function WhatsappPanel() {
             Nova sessao
           </Button>
         </div>
+        <p className="mt-3 text-xs leading-5 text-zinc-500">
+          Desconectar tenta remover este sistema da lista de aparelhos conectados no celular. Nova sessao apenas limpa a sessao local para gerar outro QR Code.
+        </p>
       </div>
 
       <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
