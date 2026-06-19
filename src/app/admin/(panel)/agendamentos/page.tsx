@@ -8,6 +8,8 @@ import {
   CalendarDays,
   CalendarClock,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   MessageCircle,
   Phone,
@@ -34,9 +36,11 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type PeriodFilter = "today" | "upcoming" | "all";
 type StatusFilter = AppointmentStatus | "ALL";
 type Tone = "blue" | "green" | "amber" | "rose" | "sky";
+type DayStatusCounts = Record<AppointmentStatus, number> & { total: number };
 
 const TIME_ZONE = "America/Fortaleza";
 const BUSINESS_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const statusOptions: Array<{ value: StatusFilter; label: string }> = [
   { value: "ALL", label: "Todos" },
   { value: "PENDING", label: "Pendentes" },
@@ -63,6 +67,12 @@ const statusClasses: Record<AppointmentStatus, string> = {
   CONFIRMED: "bg-blue-50 text-[#0F5EF7]",
   CANCELLED: "bg-rose-50 text-rose-700",
   COMPLETED: "bg-emerald-50 text-[#22C55E]"
+};
+const statusDotClasses: Record<AppointmentStatus, string> = {
+  PENDING: "bg-amber-500",
+  CONFIRMED: "bg-[#0F5EF7]",
+  CANCELLED: "bg-rose-500",
+  COMPLETED: "bg-[#22C55E]"
 };
 const whatsappDisconnectedMessage = "WhatsApp desconectado. O status foi alterado, mas a notificacao nao foi enviada.";
 const appointmentStatuses: AppointmentStatus[] = ["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"];
@@ -179,13 +189,17 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
   const params = (await searchParams) ?? {};
   const status = parseStatus(getFirstValue(params.status));
   const period = parsePeriod(getFirstValue(params.period));
+  const selectedDateKey = parseDateKey(getFirstValue(params.date));
   const now = new Date();
   const today = getBusinessDayRange(now);
+  const selectedDateRange = selectedDateKey ? getBusinessDayRangeFromKey(selectedDateKey) : null;
+  const calendarMonthKey = parseMonthKey(getFirstValue(params.month)) ?? selectedDateKey?.slice(0, 7) ?? toBusinessMonthKey(now);
+  const calendarMonthRange = getBusinessMonthRange(calendarMonthKey);
   const nextHourEnd = new Date(now.getTime() + 60 * 60 * 1000);
-  const where = buildAppointmentWhere(status, period, today);
+  const where = buildAppointmentWhere(status, period, today, selectedDateRange);
   const whatsappState = getWhatsappConnectionState();
 
-  const [appointments, todayTotal, statusCounts, nextAppointment, nextHourTotal, failedNotificationTotal] = await Promise.all([
+  const [appointments, calendarAppointments, todayTotal, statusCounts, nextAppointment, nextHourTotal, failedNotificationTotal] = await Promise.all([
     prisma.appointment.findMany({
       where,
       include: {
@@ -198,6 +212,15 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
       },
       orderBy: [{ startsAt: "asc" }, { createdAt: "desc" }],
       take: 50
+    }),
+    prisma.appointment.findMany({
+      where: {
+        startsAt: { gte: calendarMonthRange.start, lte: calendarMonthRange.end }
+      },
+      select: {
+        startsAt: true,
+        status: true
+      }
     }),
     prisma.appointment.count({ where: { startsAt: { gte: today.start, lte: today.end } } }),
     prisma.appointment.groupBy({ by: ["status"], _count: { _all: true } }),
@@ -222,6 +245,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
   const completedTotal = getStatusCount(statusCounts, "COMPLETED");
   const cancelledTotal = getStatusCount(statusCounts, "CANCELLED");
   const activeCount = confirmedTotal + completedTotal;
+  const calendarCounts = buildCalendarCounts(calendarAppointments);
 
   return (
     <section className="space-y-6">
@@ -284,12 +308,20 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-        <MetricCard href={buildFilterHref({ status: "PENDING", period })} icon={Clock3} label="Pendentes" value={pendingTotal} helper="Para confirmar" tone="amber" />
-        <MetricCard href={buildFilterHref({ status, period: "today" })} icon={CalendarClock} label="Hoje" value={todayTotal} helper="Agenda do dia" tone="blue" />
+        <MetricCard href={buildFilterHref({ status: "PENDING", period, monthKey: calendarMonthKey })} icon={Clock3} label="Pendentes" value={pendingTotal} helper="Para confirmar" tone="amber" />
+        <MetricCard href={buildFilterHref({ status, period: "today", monthKey: calendarMonthKey })} icon={CalendarClock} label="Hoje" value={todayTotal} helper="Agenda do dia" tone="blue" />
         <MetricCard icon={AlertTriangle} label="Proximos 60 min" value={nextHourTotal} helper="Atencao imediata" tone="rose" />
         <MetricCard icon={MessageCircle} label="WhatsApp falhou" value={failedNotificationTotal} helper="Reenvio manual" tone="amber" />
-        <MetricCard href={buildFilterHref({ status: "CONFIRMED", period })} icon={BadgeCheck} label="Ativos" value={activeCount} helper={`${confirmedTotal} confirmados`} tone="green" />
+        <MetricCard href={buildFilterHref({ status: "CONFIRMED", period, monthKey: calendarMonthKey })} icon={BadgeCheck} label="Ativos" value={activeCount} helper={`${confirmedTotal} confirmados`} tone="green" />
       </div>
+
+      <CalendarPanel
+        monthKey={calendarMonthKey}
+        selectedDateKey={selectedDateKey}
+        status={status}
+        period={period}
+        countsByDate={calendarCounts}
+      />
 
       <div className="rounded-[22px] border border-white bg-white/95 p-4 shadow-xl shadow-blue-950/5">
         <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
@@ -297,8 +329,8 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
             {periodOptions.map((option) => (
               <FilterLink
                 key={option.value}
-                active={period === option.value}
-                href={buildFilterHref({ status, period: option.value })}
+                active={!selectedDateKey && period === option.value}
+                href={buildFilterHref({ status, period: option.value, monthKey: calendarMonthKey })}
               >
                 {option.label}
               </FilterLink>
@@ -309,7 +341,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
               <FilterLink
                 key={option.value}
                 active={status === option.value}
-                href={buildFilterHref({ status: option.value, period })}
+                href={buildFilterHref({ status: option.value, period, dateKey: selectedDateKey, monthKey: calendarMonthKey })}
               >
                 {option.label}
               </FilterLink>
@@ -324,7 +356,9 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
             <div>
               <h2 className="font-display text-xl font-semibold text-[#082F8B]">Lista de agendamentos</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Mostrando {appointments.length} registro(s) com os filtros atuais.
+                {selectedDateKey
+                  ? `Mostrando ${appointments.length} registro(s) de ${formatDateKeyLong(selectedDateKey)}.`
+                  : `Mostrando ${appointments.length} registro(s) com os filtros atuais.`}
               </p>
             </div>
             <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#0F5EF7]">
@@ -441,6 +475,169 @@ function AppointmentCard({
         </div>
       </div>
     </article>
+  );
+}
+
+function CalendarPanel({
+  monthKey,
+  selectedDateKey,
+  status,
+  period,
+  countsByDate
+}: {
+  monthKey: string;
+  selectedDateKey: string | null;
+  status: StatusFilter;
+  period: PeriodFilter;
+  countsByDate: Map<string, DayStatusCounts>;
+}) {
+  const days = getCalendarDays(monthKey);
+  const selectedCount = selectedDateKey ? countsByDate.get(selectedDateKey)?.total ?? 0 : null;
+
+  return (
+    <div className="overflow-hidden rounded-[22px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
+      <div className="grid gap-4 border-b border-blue-50 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div>
+          <p className="text-sm font-semibold text-[#0F5EF7]">Calendario do mes</p>
+          <h2 className="font-display mt-1 text-xl font-semibold text-[#082F8B]">{formatMonthLabel(monthKey)}</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Clique em um dia para ver somente os agendamentos daquele dia.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={buildMonthHref({ monthKey: addMonths(monthKey, -1), status, period })}
+            className="inline-flex h-11 min-h-11 touch-manipulation items-center justify-center gap-2 rounded-[12px] border border-blue-100 bg-white px-3 text-sm font-semibold text-[#082F8B] transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+            aria-label="Mes anterior"
+          >
+            <ChevronLeft aria-hidden className="h-4 w-4" />
+          </Link>
+          <Link
+            href={buildMonthHref({ monthKey: addMonths(monthKey, 1), status, period })}
+            className="inline-flex h-11 min-h-11 touch-manipulation items-center justify-center gap-2 rounded-[12px] border border-blue-100 bg-white px-3 text-sm font-semibold text-[#082F8B] transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+            aria-label="Proximo mes"
+          >
+            <ChevronRight aria-hidden className="h-4 w-4" />
+          </Link>
+          {selectedDateKey && (
+            <Link
+              href={buildFilterHref({ status, period, monthKey })}
+              className="inline-flex h-11 min-h-11 touch-manipulation items-center justify-center rounded-[12px] bg-blue-50 px-4 text-sm font-semibold text-[#0F5EF7] transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+            >
+              Limpar dia
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_240px]">
+        <div className="min-w-0 overflow-x-auto">
+          <div className="min-w-[620px]">
+            <div className="grid grid-cols-7 gap-2 px-1 pb-2">
+              {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"].map((day) => (
+                <span key={day} className="text-center text-xs font-semibold uppercase text-slate-400">
+                  {day}
+                </span>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {days.map((day) => (
+                <CalendarDay
+                  key={day.dateKey}
+                  day={day}
+                  counts={countsByDate.get(day.dateKey)}
+                  selected={selectedDateKey === day.dateKey}
+                  href={buildDayHref({ dateKey: day.dateKey, status, monthKey })}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[18px] bg-blue-50/50 p-4">
+          <p className="text-sm font-semibold text-[#082F8B]">
+            {selectedDateKey ? formatDateKeyLong(selectedDateKey) : "Resumo visual"}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            {selectedDateKey
+              ? `${selectedCount} agendamento(s) nesse dia.`
+              : "As bolinhas mostram quais status existem em cada dia."}
+          </p>
+          <div className="mt-4 space-y-2">
+            {appointmentStatuses.map((item) => (
+              <div key={item} className="flex items-center justify-between gap-3 text-sm">
+                <span className="flex items-center gap-2 text-slate-600">
+                  <span className={`h-2.5 w-2.5 rounded-full ${statusDotClasses[item]}`} />
+                  {statusLabel(item)}
+                </span>
+                <span className="font-semibold text-[#082F8B]">
+                  {selectedDateKey ? countsByDate.get(selectedDateKey)?.[item] ?? 0 : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CalendarDay({
+  day,
+  counts,
+  selected,
+  href
+}: {
+  day: { dateKey: string; dayNumber: number; currentMonth: boolean; today: boolean };
+  counts: DayStatusCounts | undefined;
+  selected: boolean;
+  href: string;
+}) {
+  const activeStatuses = appointmentStatuses.filter((status) => (counts?.[status] ?? 0) > 0);
+
+  return (
+    <Link
+      href={href}
+      aria-current={selected ? "date" : undefined}
+      aria-label={`${day.dayNumber} de ${formatMonthLabel(day.dateKey.slice(0, 7))}, ${counts?.total ?? 0} agendamento(s)`}
+      className={[
+        "group flex min-h-[86px] touch-manipulation flex-col justify-between rounded-[16px] border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2",
+        selected
+          ? "border-[#0F5EF7] bg-[#0F5EF7] text-white shadow-lg shadow-blue-500/20"
+          : day.today
+            ? "border-[#0F5EF7]/30 bg-blue-50 text-[#082F8B]"
+            : day.currentMonth
+              ? "border-blue-100 bg-white text-[#082F8B] hover:border-blue-200 hover:bg-blue-50"
+              : "border-slate-100 bg-slate-50 text-slate-400 hover:bg-slate-100"
+      ].join(" ")}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm font-semibold tabular-nums">{day.dayNumber}</span>
+        {counts?.total ? (
+          <span
+            className={
+              selected
+                ? "rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold text-white"
+                : "rounded-full bg-[#F3F4F6] px-2 py-0.5 text-xs font-semibold text-[#082F8B]"
+            }
+          >
+            {counts.total}
+          </span>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {activeStatuses.map((status) => (
+          <span key={status} className="flex items-center gap-1">
+            <span className={`h-2.5 w-2.5 rounded-full ${selected ? "bg-white" : statusDotClasses[status]}`} />
+            {(counts?.[status] ?? 0) > 1 && (
+              <span className={selected ? "text-[11px] font-semibold text-white/90" : "text-[11px] font-semibold text-slate-500"}>
+                {counts?.[status]}
+              </span>
+            )}
+          </span>
+        ))}
+      </div>
+    </Link>
   );
 }
 
@@ -623,7 +820,12 @@ function FilterLink({ active, href, children }: { active: boolean; href: string;
   );
 }
 
-function buildAppointmentWhere(status: StatusFilter, period: PeriodFilter, today: { start: Date; end: Date }) {
+function buildAppointmentWhere(
+  status: StatusFilter,
+  period: PeriodFilter,
+  today: { start: Date; end: Date },
+  selectedDateRange: { start: Date; end: Date } | null
+) {
   const where: {
     status?: AppointmentStatus;
     startsAt?: { gte?: Date; lte?: Date };
@@ -631,6 +833,11 @@ function buildAppointmentWhere(status: StatusFilter, period: PeriodFilter, today
 
   if (status !== "ALL") {
     where.status = status;
+  }
+
+  if (selectedDateRange) {
+    where.startsAt = { gte: selectedDateRange.start, lte: selectedDateRange.end };
+    return where;
   }
 
   if (period === "today") {
@@ -683,11 +890,56 @@ function getNotificationSummary(notification: { status: string; error: string | 
   return { label: "falhou", tone: "danger" as const };
 }
 
-function buildFilterHref({ status, period }: { status: StatusFilter; period: PeriodFilter }) {
+function buildCalendarCounts(rows: Array<{ startsAt: Date; status: AppointmentStatus }>) {
+  const counts = new Map<string, DayStatusCounts>();
+
+  for (const row of rows) {
+    const key = toBusinessDateKey(row.startsAt);
+    const current =
+      counts.get(key) ??
+      ({
+        total: 0,
+        PENDING: 0,
+        CONFIRMED: 0,
+        CANCELLED: 0,
+        COMPLETED: 0
+      } satisfies DayStatusCounts);
+    current.total += 1;
+    current[row.status] += 1;
+    counts.set(key, current);
+  }
+
+  return counts;
+}
+
+function buildFilterHref({
+  status,
+  period,
+  dateKey,
+  monthKey
+}: {
+  status: StatusFilter;
+  period: PeriodFilter;
+  dateKey?: string | null;
+  monthKey?: string;
+}) {
   const params = new URLSearchParams();
-  params.set("period", period);
+  if (dateKey) {
+    params.set("date", dateKey);
+  } else {
+    params.set("period", period);
+  }
+  if (monthKey) params.set("month", monthKey);
   if (status !== "ALL") params.set("status", status);
   return `/admin/agendamentos?${params.toString()}`;
+}
+
+function buildDayHref({ dateKey, status, monthKey }: { dateKey: string; status: StatusFilter; monthKey: string }) {
+  return buildFilterHref({ status, period: "upcoming", dateKey, monthKey });
+}
+
+function buildMonthHref({ monthKey, status, period }: { monthKey: string; status: StatusFilter; period: PeriodFilter }) {
+  return buildFilterHref({ status, period, monthKey });
 }
 
 function parseStatus(value: string | undefined): StatusFilter {
@@ -706,16 +958,72 @@ function getFirstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function parseDateKey(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = createBusinessDate(value);
+  return toBusinessDateKey(date) === value ? value : null;
+}
+
+function parseMonthKey(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) return null;
+  const date = createBusinessDate(`${value}-01`);
+  return toBusinessMonthKey(date) === value ? value : null;
+}
+
 function getBusinessDayRange(date: Date) {
   const key = toBusinessDateKey(date);
+  return getBusinessDayRangeFromKey(key);
+}
+
+function getBusinessDayRangeFromKey(key: string) {
   return {
     start: new Date(`${key}T00:00:00-03:00`),
     end: new Date(`${key}T23:59:59.999-03:00`)
   };
 }
 
+function getBusinessMonthRange(monthKey: string) {
+  const start = new Date(`${monthKey}-01T00:00:00-03:00`);
+  const nextMonth = addMonths(monthKey, 1);
+  const end = new Date(new Date(`${nextMonth}-01T00:00:00-03:00`).getTime() - 1);
+  return { start, end };
+}
+
+function getCalendarDays(monthKey: string) {
+  const firstDay = createBusinessDate(`${monthKey}-01`);
+  const firstWeekday = firstDay.getUTCDay();
+  const gridStart = new Date(firstDay.getTime() - firstWeekday * DAY_MS);
+  const currentMonth = monthKey;
+  const todayKey = toBusinessDateKey(new Date());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart.getTime() + index * DAY_MS);
+    const dateKey = toBusinessDateKey(date);
+    return {
+      dateKey,
+      dayNumber: Number(dateKey.slice(-2)),
+      currentMonth: dateKey.startsWith(currentMonth),
+      today: dateKey === todayKey
+    };
+  });
+}
+
+function addMonths(monthKey: string, amount: number) {
+  const date = createBusinessDate(`${monthKey}-01`);
+  date.setUTCMonth(date.getUTCMonth() + amount);
+  return toBusinessMonthKey(date);
+}
+
+function createBusinessDate(dateKey: string) {
+  return new Date(`${dateKey}T12:00:00-03:00`);
+}
+
 function toBusinessDateKey(date: Date) {
   return new Date(date.getTime() - BUSINESS_UTC_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function toBusinessMonthKey(date: Date) {
+  return toBusinessDateKey(date).slice(0, 7);
 }
 
 function formatDateTime(value: Date) {
@@ -741,6 +1049,24 @@ function formatDateShort(value: Date) {
     day: "2-digit",
     month: "2-digit"
   }).format(value);
+}
+
+function formatDateKeyLong(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIME_ZONE,
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).format(createBusinessDate(value));
+}
+
+function formatMonthLabel(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIME_ZONE,
+    month: "long",
+    year: "numeric"
+  }).format(createBusinessDate(`${value}-01`));
 }
 
 function formatTime(value: Date) {
