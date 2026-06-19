@@ -1,7 +1,14 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString:
+    process.env.DATABASE_URL ??
+    "postgresql://agendamento:agendamento@localhost:5432/agendamento?schema=public"
+});
+
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? "admin@agendamento.local";
@@ -17,6 +24,28 @@ async function main() {
     }
   });
 
+  await prisma.businessProfile.upsert({
+    where: { id: "default" },
+    update: {},
+    create: {
+      id: "default",
+      businessName: "Studio Agenda",
+      tagline: "Escolha seu horario",
+      logoUrl: "/brand/logo-icon.png",
+      address: "Atendimento com horario marcado",
+      whatsappUrl: "https://wa.me/5585999990000",
+      instagramUrl: "https://instagram.com/",
+      primaryColor: "#0F5EF7",
+      primaryDark: "#082F8B",
+      accentColor: "#22C55E",
+      accentSoft: "#EAFBF1",
+      backgroundColor: "#F6F9FF",
+      surfaceColor: "#FFFFFF",
+      textColor: "#082F8B",
+      mutedColor: "#64748B"
+    }
+  });
+
   const corte = await prisma.service.upsert({
     where: { id: "seed-service-corte" },
     update: {},
@@ -25,11 +54,12 @@ async function main() {
       name: "Corte feminino",
       description: "Corte personalizado com finalizacao.",
       durationMinutes: 60,
-      priceCents: 9000
+      priceCents: 9000,
+      sortOrder: 1
     }
   });
 
-  await prisma.service.upsert({
+  const escova = await prisma.service.upsert({
     where: { id: "seed-service-escova" },
     update: {},
     create: {
@@ -37,7 +67,24 @@ async function main() {
       name: "Escova",
       description: "Escova modelada para eventos e rotina.",
       durationMinutes: 45,
-      priceCents: 6000
+      priceCents: 6000,
+      promoActive: true,
+      promoDiscountPercent: 15,
+      sortOrder: 2
+    }
+  });
+
+  await prisma.coupon.upsert({
+    where: { code: "BEMVINDO10" },
+    update: {},
+    create: {
+      code: "BEMVINDO10",
+      name: "Boas-vindas",
+      discountType: "PERCENT",
+      discountValue: 10,
+      minAmountCents: 5000,
+      usageLimit: 100,
+      active: true
     }
   });
 
@@ -52,6 +99,26 @@ async function main() {
     }
   });
 
+  const bianca = await prisma.professional.upsert({
+    where: { id: "seed-professional-bianca" },
+    update: {},
+    create: {
+      id: "seed-professional-bianca",
+      name: "Bianca Lima",
+      phone: "85977776666",
+      specialties: "Escovas, finalizacao e tratamentos"
+    }
+  });
+
+  await prisma.professionalService.createMany({
+    data: [
+      { professionalId: camila.id, serviceId: corte.id },
+      { professionalId: camila.id, serviceId: escova.id },
+      { professionalId: bianca.id, serviceId: escova.id }
+    ],
+    skipDuplicates: true
+  });
+
   await prisma.professionalSchedule.createMany({
     data: [1, 2, 3, 4, 5].map((dayOfWeek) => ({
       professionalId: camila.id,
@@ -59,6 +126,17 @@ async function main() {
       startTime: "09:00",
       endTime: "18:00",
       intervalMinutes: corte.durationMinutes
+    })),
+    skipDuplicates: true
+  });
+
+  await prisma.professionalSchedule.createMany({
+    data: [2, 3, 4, 5, 6].map((dayOfWeek) => ({
+      professionalId: bianca.id,
+      dayOfWeek,
+      startTime: "10:00",
+      endTime: "17:00",
+      intervalMinutes: escova.durationMinutes
     })),
     skipDuplicates: true
   });
@@ -73,4 +151,3 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
-

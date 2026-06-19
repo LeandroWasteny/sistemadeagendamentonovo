@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum AppointmentStatus {
@@ -12,6 +11,21 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+}
+
+enum NotificationTarget {
+  CLIENT
+  PROFESSIONAL
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
+enum CouponDiscountType {
+  PERCENT
+  FIXED
 }
 
 model User {
@@ -29,10 +43,19 @@ model Service {
   description     String
   durationMinutes Int
   priceCents      Int
+  promoPriceCents Int?
+  promoActive     Boolean       @default(false)
+  promoDiscountPercent Int       @default(0)
+  promoStartsAt   DateTime?
+  promoEndsAt     DateTime?
+  sortOrder       Int           @default(0)
   active          Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   appointments    Appointment[]
+  professionals   ProfessionalService[]
+
+  @@index([active, sortOrder])
 }
 
 model Professional {
@@ -45,6 +68,19 @@ model Professional {
   updatedAt      DateTime               @updatedAt
   schedules      ProfessionalSchedule[]
   appointments   Appointment[]
+  services       ProfessionalService[]
+}
+
+model ProfessionalService {
+  id             String       @id @default(cuid())
+  professionalId String
+  serviceId      String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  service        Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([professionalId, serviceId])
+  @@index([serviceId])
 }
 
 model ProfessionalSchedule {
@@ -70,14 +106,56 @@ model Appointment {
   startsAt       DateTime
   endsAt         DateTime
   status         AppointmentStatus @default(PENDING)
+  priceCents     Int?
+  discountCents  Int               @default(0)
+  finalPriceCents Int?
   serviceId      String
   professionalId String
+  couponId       String?
   service        Service           @relation(fields: [serviceId], references: [id])
   professional   Professional      @relation(fields: [professionalId], references: [id])
+  coupon         Coupon?           @relation(fields: [couponId], references: [id])
+  notifications  NotificationLog[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
   @@index([professionalId, startsAt])
+  @@index([couponId])
+}
+
+model Coupon {
+  id             String             @id @default(cuid())
+  code           String             @unique
+  name           String
+  discountType   CouponDiscountType @default(PERCENT)
+  discountValue  Int
+  minAmountCents Int                @default(0)
+  usageLimit     Int?
+  usedCount      Int                @default(0)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  active         Boolean            @default(true)
+  appointments   Appointment[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([active, startsAt, endsAt])
+}
+
+model NotificationLog {
+  id                String             @id @default(cuid())
+  appointmentId     String
+  appointment       Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  target            NotificationTarget
+  status            NotificationStatus
+  channel           String             @default("WHATSAPP")
+  destination       String
+  message           String
+  providerMessageId String?
+  error             String?
+  createdAt         DateTime           @default(now())
+
+  @@index([appointmentId, createdAt])
 }
 
 model WhatsappSession {
@@ -87,4 +165,24 @@ model WhatsappSession {
   qrCode    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model BusinessProfile {
+  id              String   @id
+  businessName    String
+  tagline         String
+  logoUrl         String
+  address         String
+  whatsappUrl     String
+  instagramUrl    String
+  primaryColor    String   @default("#0F5EF7")
+  primaryDark     String   @default("#082F8B")
+  accentColor     String   @default("#22C55E")
+  accentSoft      String   @default("#EAFBF1")
+  backgroundColor String   @default("#F6F9FF")
+  surfaceColor    String   @default("#FFFFFF")
+  textColor       String   @default("#082F8B")
+  mutedColor      String   @default("#64748B")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

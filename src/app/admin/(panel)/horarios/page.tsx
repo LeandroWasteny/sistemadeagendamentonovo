@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 const days = [
   { value: 0, label: "Domingo" },
   { value: 1, label: "Segunda" },
@@ -26,32 +28,47 @@ async function createSchedule(formData: FormData) {
       active: formData.get("active") === "on"
     }
   });
+  revalidatePath("/admin");
   revalidatePath("/admin/horarios");
+  revalidatePath("/agendar");
 }
 
 async function deleteSchedule(formData: FormData) {
   "use server";
   await prisma.professionalSchedule.delete({ where: { id: String(formData.get("id")) } });
+  revalidatePath("/admin");
   revalidatePath("/admin/horarios");
+  revalidatePath("/agendar");
 }
 
 export default async function SchedulesPage() {
   const [professionals, schedules] = await Promise.all([
-    prisma.professional.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    prisma.professional.findMany({
+      where: { active: true },
+      include: { services: { include: { service: true } } },
+      orderBy: { name: "asc" }
+    }),
     prisma.professionalSchedule.findMany({
-      include: { professional: true },
-      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }]
+      include: {
+        professional: {
+          include: { services: { include: { service: true } } }
+        }
+      },
+      orderBy: [{ professional: { name: "asc" } }, { dayOfWeek: "asc" }, { startTime: "asc" }]
     })
   ]);
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[380px_1fr]">
-      <form action={createSchedule} className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h1 className="text-xl font-semibold">Novo horario</h1>
+    <section className="grid min-w-0 gap-6 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+      <form action={createSchedule} className="min-w-0 rounded-[20px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
+        <p className="text-sm font-semibold text-[#0F5EF7]">Disponibilidade</p>
+        <h1 className="font-display mt-1 text-xl font-semibold text-[#082F8B]">Novo horario</h1>
         <div className="mt-4 space-y-3">
           <Select name="professionalId" required>
             {professionals.map((professional) => (
-              <option key={professional.id} value={professional.id}>{professional.name}</option>
+              <option key={professional.id} value={professional.id}>
+                {professional.name} - {professional.services.map((item) => item.service.name).join(", ") || "sem servico vinculado"}
+              </option>
             ))}
           </Select>
           <Select name="dayOfWeek" required>
@@ -62,7 +79,7 @@ export default async function SchedulesPage() {
           <Input name="startTime" type="time" required />
           <Input name="endTime" type="time" required />
           <Input name="intervalMinutes" type="number" min="15" step="15" defaultValue="30" required />
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-sm font-semibold text-[#082F8B]">
             <input name="active" type="checkbox" defaultChecked />
             Ativo
           </label>
@@ -70,22 +87,34 @@ export default async function SchedulesPage() {
         </div>
       </form>
 
-      <div className="rounded-lg border border-zinc-200 bg-white shadow-sm">
-        <div className="border-b border-zinc-200 p-5">
-          <h2 className="text-xl font-semibold">Horarios cadastrados</h2>
+      <div className="min-w-0 overflow-hidden rounded-[20px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
+        <div className="border-b border-blue-50 p-5">
+          <h2 className="font-display text-xl font-semibold text-[#082F8B]">Horarios cadastrados</h2>
         </div>
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-blue-50">
           {schedules.map((schedule) => (
-            <div key={schedule.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="font-medium">{schedule.professional.name}</p>
-                <p className="text-sm text-zinc-500">
+            <div key={schedule.id} className="flex min-w-0 flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0">
+                <p className="font-semibold text-[#082F8B]">{schedule.professional.name}</p>
+                <p className="break-words text-sm text-slate-500">
                   {days.find((day) => day.value === schedule.dayOfWeek)?.label}: {schedule.startTime} ate {schedule.endTime}, intervalo {schedule.intervalMinutes} min
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {schedule.professional.services.map((item) => (
+                    <span key={item.serviceId} className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-[#0F5EF7]">
+                      {item.service.name}
+                    </span>
+                  ))}
+                  {schedule.professional.services.length === 0 && (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                      sem servico vinculado
+                    </span>
+                  )}
+                </div>
               </div>
-              <form action={deleteSchedule}>
+              <form action={deleteSchedule} className="w-full md:w-auto">
                 <input type="hidden" name="id" value={schedule.id} />
-                <Button variant="danger">Excluir</Button>
+                <Button className="w-full md:w-auto" variant="danger">Excluir</Button>
               </form>
             </div>
           ))}
@@ -94,4 +123,3 @@ export default async function SchedulesPage() {
     </section>
   );
 }
-

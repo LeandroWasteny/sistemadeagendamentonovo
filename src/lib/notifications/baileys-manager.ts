@@ -1,15 +1,10 @@
+import { readdir, rm } from "fs/promises";
 import pino from "pino";
 import QRCode from "qrcode";
+import type makeWASocket from "baileys";
 import type { WhatsappMessage } from "./templates";
 
-type BaileysSocket = {
-  ev: {
-    on: (event: string, listener: (...args: never[]) => void) => void;
-  };
-  sendMessage: (jid: string, content: { text: string }) => Promise<unknown>;
-  logout: () => Promise<void>;
-  end?: (error?: Error) => void;
-};
+type BaileysSocket = ReturnType<typeof makeWASocket>;
 
 type WhatsappConnectionState = {
   status: "DISCONNECTED" | "CONNECTING" | "QR_READY" | "CONNECTED" | "ERROR";
@@ -66,23 +61,17 @@ export async function startWhatsappConnection() {
   baileysGlobal.baileysManualStop = false;
 
   const { default: makeWASocket, useMultiFileAuthState } = await import("baileys");
-  const authDir = process.env.WHATSAPP_AUTH_DIR ?? "baileys-auth";
+  const authDir = getAuthDir();
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const socket = makeWASocket({
     auth: state,
     logger: pino({ level: "silent" }),
     printQRInTerminal: false
-  }) as BaileysSocket;
+  });
 
   baileysGlobal.baileysSocket = socket;
-  socket.ev.on("creds.update", saveCreds as (...args: never[]) => void);
-  socket.ev.on("connection.update", async (update: never) => {
-    const connectionUpdate = update as {
-      connection?: string;
-      qr?: string;
-      lastDisconnect?: { error?: { message?: string } };
-    };
-
+  socket.ev.on("creds.update", saveCreds);
+  socket.ev.on("connection.update", async (connectionUpdate) => {
     if (connectionUpdate.qr) {
       setState({
         status: "QR_READY",
@@ -125,8 +114,8 @@ export async function stopWhatsappConnection() {
   baileysGlobal.baileysManualStop = true;
   baileysGlobal.baileysSocket = undefined;
   if (socket) {
-    await socket.logout().catch(() => undefined);
-    socket.end?.();
+    const closableSocket = socket as unknown as { end?: (error?: Error) => void };
+    closableSocket.end?.();
   }
   setState({
     status: "DISCONNECTED",
@@ -137,15 +126,123 @@ export async function stopWhatsappConnection() {
   return getState();
 }
 
-export async function sendWithBaileys(message: WhatsappMessage) {
-  await startWhatsappConnection();
-  const socket = baileysGlobal.baileysSocket;
-  const state = getState();
-
-  if (!socket || state.status !== "CONNECTED") {
-    throw new Error("WhatsApp ainda nao esta conectado. Gere e leia o QR Code no admin.");
+export async function logoutWhatsappDevice() {
+  try {
+    const socket = await waitForConnectedSocket(15000);
+    baileysGlobal.baileysManualStop = true;
+    await socket.logout();
+    const closableSocket = socket as unknown as { end?: (error?: Error) => void };
+    closableSocket.end?.();
+    baileysGlobal.baileysSocket = undefined;
+    await clearAuthState();
+    setState({
+      status: "DISCONNECTED",
+      qr: undefined,
+      qrImage: undefined,
+      message: "Logout enviado ao WhatsApp. O aparelho deve sair da lista de dispositivos conectados em alguns segundos."
+    });
+  } catch (error) {
+    await stopWhatsappConnection();
+    await clearAuthState();
+    setState({
+      status: "DISCONNECTED",
+      qr: undefined,
+      qrImage: undefined,
+      message:
+        error instanceof Error
+          ? `Sessao local removida, mas nao foi possivel confirmar logout no celular: ${error.message}`
+          : "Sessao local removida, mas nao foi possivel confirmar logout no celular."
+    });
   }
 
-  await socket.sendMessage(`${message.to}@s.whatsapp.net`, { text: message.text });
-  return { ok: true, mode: "baileys" };
+  return getState();
+}
+
+export async function resetWhatsappConnection() {
+  await stopWhatsappConnection();
+  await clearAuthState();
+  setState({
+    status: "DISCONNECTED",
+    qr: undefined,
+    qrImage: undefined,
+    message: "Sessao antiga removida. Clique em conectar para gerar um novo QR Code."
+  });
+  return getState();
+}
+
+export async function sendWithBaileys(message: WhatsappMessage) {
+  const socket = await waitForConnectedSocket();
+  const jid = await resolveRecipientJid(socket, message.to);
+  const result = await socket.sendMessage(jid, { text: message.text });
+
+  console.log(`[whatsapp:baileys] mensagem enviada para ${maskPhone(message.to)} (${jid})`);
+  return { ok: true, mode: "baileys", jid, messageId: result?.key?.id };
+}
+
+async function waitForConnectedSocket(timeoutMs = 20000) {
+  await startWhatsappConnection();
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const socket = baileysGlobal.baileysSocket;
+    if (socket && getState().status === "CONNECTED") {
+      return socket;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error("WhatsApp ainda nao esta conectado. Gere e leia o QR Code no admin.");
+}
+
+async function resolveRecipientJid(socket: BaileysSocket, phone: string) {
+  const candidates = buildBrazilPhoneCandidates(phone);
+
+  for (const candidate of candidates) {
+    const [result] = (await socket.onWhatsApp(candidate)) ?? [];
+    if (result?.exists && result.jid) {
+      return result.jid;
+    }
+  }
+
+  throw new Error(`Numero ${maskPhone(phone)} nao encontrado no WhatsApp.`);
+}
+
+function buildBrazilPhoneCandidates(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const candidates = [digits];
+
+  if (digits.startsWith("55") && digits.length === 13 && digits[4] === "9") {
+    candidates.push(`${digits.slice(0, 4)}${digits.slice(5)}`);
+  }
+
+  return [...new Set(candidates)];
+}
+
+function maskPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length <= 4) return "****";
+  return `${digits.slice(0, 4)}****${digits.slice(-2)}`;
+}
+
+function getAuthDir() {
+  return process.env.WHATSAPP_AUTH_DIR ?? "baileys-auth";
+}
+
+async function clearAuthState() {
+  const authDir = getAuthDir();
+  const entries = await readdir(authDir, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  });
+
+  await Promise.all(
+    entries.map((entry) =>
+      rm(`${authDir}/${entry.name}`, {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+        retryDelay: 300
+      })
+    )
+  );
 }

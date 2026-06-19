@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
@@ -6,8 +7,12 @@ export async function GET() {
   await requireAdmin();
   return NextResponse.json(
     await prisma.professionalSchedule.findMany({
-      include: { professional: true },
-      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }]
+      include: {
+        professional: {
+          include: { services: { include: { service: true } } }
+        }
+      },
+      orderBy: [{ professional: { name: "asc" } }, { dayOfWeek: "asc" }, { startTime: "asc" }]
     })
   );
 }
@@ -25,6 +30,8 @@ export async function POST(request: Request) {
       active: Boolean(data.active)
     }
   });
+  revalidatePath("/admin");
+  revalidatePath("/admin/horarios");
+  revalidatePath("/agendar");
   return NextResponse.json(schedule);
 }
-

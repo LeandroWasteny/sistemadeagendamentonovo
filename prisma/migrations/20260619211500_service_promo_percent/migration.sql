@@ -1,0 +1,2 @@
+ALTER TABLE "Service"
+  ADD COLUMN "promoDiscountPercent" INTEGER NOT NULL DEFAULT 0;

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/session";
 import {
   getWhatsappConnectionState,
-  startWhatsappConnection,
-  stopWhatsappConnection
+  logoutWhatsappDevice,
+  startWhatsappConnection
 } from "@/lib/notifications/baileys-manager";
 
 export async function GET() {
@@ -18,6 +18,5 @@ export async function POST() {
 
 export async function DELETE() {
   await requireAdmin();
-  return NextResponse.json(await stopWhatsappConnection());
+  return NextResponse.json(await logoutWhatsappDevice());
 }
-
