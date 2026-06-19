@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/prisma";
+
 export type PublicBookingProfile = {
   businessName: string;
   tagline: string;
@@ -15,13 +17,9 @@ export type PublicBookingProfile = {
     text: string;
     muted: string;
   };
-  promotions: Array<{
-    title: string;
-    description: string;
-  }>;
 };
 
-export const publicBookingProfile: PublicBookingProfile = {
+export const defaultPublicBookingProfile: PublicBookingProfile = {
   businessName: "Studio Agenda",
   tagline: "Escolha seu horario",
   logoUrl: "/brand/logo-icon.png",
@@ -37,15 +35,29 @@ export const publicBookingProfile: PublicBookingProfile = {
     surface: "#FFFFFF",
     text: "#082F8B",
     muted: "#64748B"
-  },
-  promotions: [
-    {
-      title: "Agenda da semana",
-      description: "Horarios limitados"
-    },
-    {
-      title: "Confirmacao no WhatsApp",
-      description: "Voce recebe o resumo"
-    }
-  ]
+  }
 };
+
+export async function getPublicBookingProfile(): Promise<PublicBookingProfile> {
+  const profile = await prisma.businessProfile.findUnique({ where: { id: "default" } });
+  if (!profile) return defaultPublicBookingProfile;
+
+  return {
+    businessName: profile.businessName,
+    tagline: profile.tagline,
+    logoUrl: profile.logoUrl,
+    whatsappUrl: profile.whatsappUrl,
+    instagramUrl: profile.instagramUrl,
+    address: profile.address,
+    palette: {
+      primary: profile.primaryColor,
+      primaryDark: profile.primaryDark,
+      accent: profile.accentColor,
+      accentSoft: profile.accentSoft,
+      background: profile.backgroundColor,
+      surface: profile.surfaceColor,
+      text: profile.textColor,
+      muted: profile.mutedColor
+    }
+  };
+}

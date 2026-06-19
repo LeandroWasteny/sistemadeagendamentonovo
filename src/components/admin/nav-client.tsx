@@ -16,6 +16,7 @@ import {
   Moon,
   Palette,
   Scissors,
+  Store,
   Sun,
   Users
 } from "lucide-react";
@@ -49,7 +50,10 @@ const groups = [
   },
   {
     label: "Configuracao",
-    links: [{ href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle }]
+    links: [
+      { href: "/admin/perfil", label: "Perfil do negocio", icon: Store },
+      { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle }
+    ]
   }
 ];
 

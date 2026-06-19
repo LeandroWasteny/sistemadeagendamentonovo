@@ -1,11 +1,11 @@
 import type { CSSProperties } from "react";
-import { publicBookingProfile } from "@/lib/booking/public-profile";
+import { getPublicBookingProfile } from "@/lib/booking/public-profile";
 import { AppointmentLookup } from "./appointment-lookup";
 
 export const dynamic = "force-dynamic";
 
-export default function AppointmentLookupPage() {
-  const profile = publicBookingProfile;
+export default async function AppointmentLookupPage() {
+  const profile = await getPublicBookingProfile();
   const themeStyle = {
     "--booking-primary": profile.palette.primary,
     "--booking-primary-dark": profile.palette.primaryDark,

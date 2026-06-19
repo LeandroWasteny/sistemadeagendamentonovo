@@ -24,6 +24,28 @@ async function main() {
     }
   });
 
+  await prisma.businessProfile.upsert({
+    where: { id: "default" },
+    update: {},
+    create: {
+      id: "default",
+      businessName: "Studio Agenda",
+      tagline: "Escolha seu horario",
+      logoUrl: "/brand/logo-icon.png",
+      address: "Atendimento com horario marcado",
+      whatsappUrl: "https://wa.me/5585999990000",
+      instagramUrl: "https://instagram.com/",
+      primaryColor: "#0F5EF7",
+      primaryDark: "#082F8B",
+      accentColor: "#22C55E",
+      accentSoft: "#EAFBF1",
+      backgroundColor: "#F6F9FF",
+      surfaceColor: "#FFFFFF",
+      textColor: "#082F8B",
+      mutedColor: "#64748B"
+    }
+  });
+
   const corte = await prisma.service.upsert({
     where: { id: "seed-service-corte" },
     update: {},
