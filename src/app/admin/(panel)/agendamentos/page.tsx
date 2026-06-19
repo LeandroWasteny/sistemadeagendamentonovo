@@ -2,14 +2,18 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import {
+  AlertTriangle,
   BadgeCheck,
   BellRing,
+  CalendarDays,
   CalendarClock,
   CheckCircle2,
   Clock3,
   MessageCircle,
+  Phone,
   RotateCw,
   Search,
+  UserRound,
   XCircle
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
@@ -21,6 +25,7 @@ import { buildAppointmentMessages } from "@/lib/notifications/templates";
 import { sendAppointmentNotifications } from "@/lib/notifications/whatsapp";
 import { prisma } from "@/lib/prisma";
 import { statusLabel } from "@/lib/utils";
+import { AppointmentActionButton } from "./appointment-action-button";
 
 export const dynamic = "force-dynamic";
 
@@ -60,13 +65,28 @@ const statusClasses: Record<AppointmentStatus, string> = {
   COMPLETED: "bg-emerald-50 text-[#22C55E]"
 };
 const whatsappDisconnectedMessage = "WhatsApp desconectado. O status foi alterado, mas a notificacao nao foi enviada.";
+const appointmentStatuses: AppointmentStatus[] = ["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"];
 
 async function updateAppointmentStatus(formData: FormData) {
   "use server";
   await requireAdmin();
+
+  const id = parseActionId(formData.get("id"));
+  const nextStatus = parseActionStatus(formData.get("status"));
+  if (!id || !nextStatus) return;
+
+  const currentAppointment = await prisma.appointment.findUnique({
+    where: { id },
+    select: { status: true }
+  });
+
+  if (!currentAppointment || currentAppointment.status === nextStatus || !canTransitionStatus(currentAppointment.status, nextStatus)) {
+    return;
+  }
+
   const appointment = await prisma.appointment.update({
-    where: { id: String(formData.get("id")) },
-    data: { status: String(formData.get("status")) as AppointmentStatus },
+    where: { id },
+    data: { status: nextStatus },
     include: { service: true, professional: true }
   });
 
@@ -80,8 +100,11 @@ async function updateAppointmentStatus(formData: FormData) {
 async function resendAppointmentNotifications(formData: FormData) {
   "use server";
   await requireAdmin();
+  const id = parseActionId(formData.get("id"));
+  if (!id) return;
+
   const appointment = await prisma.appointment.findUnique({
-    where: { id: String(formData.get("id")) },
+    where: { id },
     include: { service: true, professional: true }
   });
 
@@ -103,9 +126,13 @@ function queueAppointmentNotification(appointment: {
   professional: { name: string; phone: string };
 }) {
   after(async () => {
-    await notifyAppointment(appointment);
-    revalidatePath("/admin/agendamentos");
-    revalidatePath("/admin/relatorios");
+    try {
+      await notifyAppointment(appointment);
+      revalidatePath("/admin/agendamentos");
+      revalidatePath("/admin/relatorios");
+    } catch (error) {
+      console.error("[appointments] falha ao processar notificacao", error);
+    }
   });
 }
 
@@ -152,11 +179,13 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
   const params = (await searchParams) ?? {};
   const status = parseStatus(getFirstValue(params.status));
   const period = parsePeriod(getFirstValue(params.period));
-  const today = getBusinessDayRange(new Date());
+  const now = new Date();
+  const today = getBusinessDayRange(now);
+  const nextHourEnd = new Date(now.getTime() + 60 * 60 * 1000);
   const where = buildAppointmentWhere(status, period, today);
   const whatsappState = getWhatsappConnectionState();
 
-  const [appointments, todayTotal, pendingTotal, confirmedTotal, completedTotal, cancelledTotal] = await Promise.all([
+  const [appointments, todayTotal, statusCounts, nextAppointment, nextHourTotal, failedNotificationTotal] = await Promise.all([
     prisma.appointment.findMany({
       where,
       include: {
@@ -171,23 +200,59 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
       take: 50
     }),
     prisma.appointment.count({ where: { startsAt: { gte: today.start, lte: today.end } } }),
-    prisma.appointment.count({ where: { status: "PENDING" } }),
-    prisma.appointment.count({ where: { status: "CONFIRMED" } }),
-    prisma.appointment.count({ where: { status: "COMPLETED" } }),
-    prisma.appointment.count({ where: { status: "CANCELLED" } })
+    prisma.appointment.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.appointment.findFirst({
+      where: {
+        startsAt: { gte: now },
+        status: { not: "CANCELLED" }
+      },
+      include: { service: true, professional: true },
+      orderBy: { startsAt: "asc" }
+    }),
+    prisma.appointment.count({
+      where: {
+        startsAt: { gte: now, lte: nextHourEnd },
+        status: { not: "CANCELLED" }
+      }
+    }),
+    prisma.notificationLog.count({ where: { status: "FAILED" } })
   ]);
+  const pendingTotal = getStatusCount(statusCounts, "PENDING");
+  const confirmedTotal = getStatusCount(statusCounts, "CONFIRMED");
+  const completedTotal = getStatusCount(statusCounts, "COMPLETED");
+  const cancelledTotal = getStatusCount(statusCounts, "CANCELLED");
+  const activeCount = confirmedTotal + completedTotal;
 
   return (
     <section className="space-y-6">
-      <div className="rounded-[24px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5 md:p-6">
-        <div className="grid gap-5 xl:grid-cols-[1fr_auto] xl:items-center">
+      <div className="overflow-hidden rounded-[24px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
+        <div className="grid gap-5 p-5 md:p-6 2xl:grid-cols-[1fr_auto] 2xl:items-center">
           <div>
             <p className="text-sm font-semibold text-[#0F5EF7]">Agenda operacional</p>
             <h1 className="font-display mt-1 text-balance text-2xl font-semibold text-[#082F8B] md:text-3xl">
-              Agendamentos
+              Fila de agendamentos
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Confirme, cancele, conclua e acompanhe notificacoes de WhatsApp em um fluxo mais rapido.
+              Priorize pendencias, acompanhe o proximo atendimento e altere status sem depender do WhatsApp conectado.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 2xl:w-[420px]">
+            <StatusPill icon={CalendarDays} label="Hoje" value={formatLongDate(now)} tone="blue" />
+            <StatusPill
+              icon={MessageCircle}
+              label="WhatsApp"
+              value={whatsappState.status === "CONNECTED" ? "Conectado" : "Atencao"}
+              tone={whatsappState.status === "CONNECTED" ? "green" : "amber"}
+            />
+          </div>
+        </div>
+        <div className="grid gap-3 border-t border-blue-50 bg-blue-50/35 p-4 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase text-slate-500">Proximo atendimento</p>
+            <p className="mt-1 break-words text-sm font-semibold text-[#082F8B]">
+              {nextAppointment
+                ? `${formatDateTime(nextAppointment.startsAt)} - ${nextAppointment.clientName} (${nextAppointment.service.name})`
+                : "Nenhum atendimento futuro ativo."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -218,12 +283,12 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard icon={CalendarClock} label="Hoje" value={todayTotal} helper="Agendamentos do dia" tone="blue" />
-        <MetricCard icon={Clock3} label="Pendentes" value={pendingTotal} helper="Aguardando acao" tone="amber" />
-        <MetricCard icon={BadgeCheck} label="Confirmados" value={confirmedTotal} helper="Na agenda ativa" tone="green" />
-        <MetricCard icon={CheckCircle2} label="Concluidos" value={completedTotal} helper="Atendimentos feitos" tone="sky" />
-        <MetricCard icon={XCircle} label="Cancelados" value={cancelledTotal} helper="Historico geral" tone="rose" />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <MetricCard href={buildFilterHref({ status: "PENDING", period })} icon={Clock3} label="Pendentes" value={pendingTotal} helper="Para confirmar" tone="amber" />
+        <MetricCard href={buildFilterHref({ status, period: "today" })} icon={CalendarClock} label="Hoje" value={todayTotal} helper="Agenda do dia" tone="blue" />
+        <MetricCard icon={AlertTriangle} label="Proximos 60 min" value={nextHourTotal} helper="Atencao imediata" tone="rose" />
+        <MetricCard icon={MessageCircle} label="WhatsApp falhou" value={failedNotificationTotal} helper="Reenvio manual" tone="amber" />
+        <MetricCard href={buildFilterHref({ status: "CONFIRMED", period })} icon={BadgeCheck} label="Ativos" value={activeCount} helper={`${confirmedTotal} confirmados`} tone="green" />
       </div>
 
       <div className="rounded-[22px] border border-white bg-white/95 p-4 shadow-xl shadow-blue-950/5">
@@ -253,7 +318,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
         </div>
       </div>
 
-      <div className="rounded-[22px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
+      <div className="overflow-hidden rounded-[22px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
         <div className="border-b border-blue-50 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -301,30 +366,37 @@ function AppointmentCard({
   };
 }) {
   const lastNotification = appointment.notifications[0];
+  const notificationStatus = getNotificationSummary(lastNotification);
+  const canConfirm = canTransitionStatus(appointment.status, "CONFIRMED");
+  const canComplete = canTransitionStatus(appointment.status, "COMPLETED");
+  const canCancel = canTransitionStatus(appointment.status, "CANCELLED");
   return (
-    <article className="grid gap-4 p-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+    <article className="grid gap-4 p-4 sm:p-5 2xl:grid-cols-[minmax(0,1fr)_300px] 2xl:items-start">
       <div className="min-w-0">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="grid gap-3 lg:grid-cols-[96px_minmax(0,1fr)_auto] lg:items-start">
+          <div className="rounded-[16px] bg-blue-50 px-3 py-3 text-[#082F8B]">
+            <p className="text-xs font-semibold uppercase text-[#0F5EF7]">{formatDateShort(appointment.startsAt)}</p>
+            <p className="mt-1 text-2xl font-semibold leading-none tabular-nums">{formatTime(appointment.startsAt)}</p>
+          </div>
           <div className="min-w-0">
-            <p className="truncate text-lg font-semibold text-[#082F8B]">
-              {appointment.clientName} - {appointment.service.name}
+            <p className="break-words text-lg font-semibold leading-snug text-[#082F8B]">
+              {appointment.clientName}
             </p>
-            <p className="mt-1 text-sm text-slate-500">
-              {appointment.professional.name} em {formatDateTime(appointment.startsAt)}
+            <p className="mt-1 break-words text-sm font-semibold text-slate-600">{appointment.service.name}</p>
+            <p className="mt-1 flex min-w-0 items-center gap-1.5 break-words text-sm text-slate-500">
+              <UserRound aria-hidden className="h-4 w-4 shrink-0" />
+              {appointment.professional.name}
             </p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[appointment.status]}`}>
+          <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[appointment.status]}`}>
             {statusLabel(appointment.status)}
           </span>
         </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          <InfoPill label="WhatsApp" value={appointment.clientPhone} />
-          <InfoPill label="Horario" value={formatTime(appointment.startsAt)} />
-          <InfoPill
-            label="Notificacao"
-            value={lastNotification ? (lastNotification.status === "SENT" ? "enviada" : "falhou") : "sem registro"}
-          />
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <InfoPill icon={Phone} label="WhatsApp" value={appointment.clientPhone} />
+          <InfoPill icon={CalendarClock} label="Data completa" value={formatDateTime(appointment.startsAt)} />
+          <InfoPill icon={MessageCircle} label="Notificacao" value={notificationStatus.label} tone={notificationStatus.tone} />
         </div>
 
         {appointment.notes && (
@@ -333,32 +405,38 @@ function AppointmentCard({
           </p>
         )}
 
-        <div className="mt-4 space-y-1">
+        <details className="mt-4 rounded-[16px] bg-[#F3F4F6] px-4 py-3">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-[#082F8B]">
+            Historico de WhatsApp
+          </summary>
+          <div className="mt-2 space-y-1">
           {appointment.notifications.length === 0 ? (
             <p className="text-xs text-slate-400">Nenhuma tentativa de notificacao registrada.</p>
           ) : (
             appointment.notifications.map((notification) => (
-              <p key={notification.id} className="break-words text-xs text-slate-500">
+              <p key={notification.id} className="line-clamp-2 break-words text-xs text-slate-500">
                 {notification.target === "CLIENT" ? "Cliente" : "Profissional"}: {notification.status === "SENT" ? "enviado" : "falhou"}
                 {notification.error ? ` - ${notification.error}` : ""}
               </p>
             ))
           )}
-        </div>
+          </div>
+        </details>
       </div>
 
       <div className="rounded-[18px] border border-blue-50 bg-blue-50/35 p-3">
-        <p className="mb-3 text-sm font-semibold text-[#082F8B]">Acoes do atendimento</p>
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-          <StatusAction id={appointment.id} status="CONFIRMED" icon={BadgeCheck} label="Confirmar" disabled={appointment.status === "CONFIRMED"} />
-          <StatusAction id={appointment.id} status="COMPLETED" icon={CheckCircle2} label="Concluir" disabled={appointment.status === "COMPLETED"} />
-          <CancelAction id={appointment.id} disabled={appointment.status === "CANCELLED"} />
+        <p className="mb-1 text-sm font-semibold text-[#082F8B]">Acoes do atendimento</p>
+        <p className="mb-3 text-xs leading-5 text-slate-500">O status muda na hora; WhatsApp pode ser reenviado depois.</p>
+        <div className="grid gap-2 lg:grid-cols-2 2xl:grid-cols-1">
+          <StatusAction id={appointment.id} status="CONFIRMED" icon={BadgeCheck} label="Confirmar" disabled={!canConfirm} variant={appointment.status === "PENDING" ? "primary" : "secondary"} />
+          <StatusAction id={appointment.id} status="COMPLETED" icon={CheckCircle2} label="Concluir" disabled={!canComplete} variant={appointment.status === "CONFIRMED" ? "success" : "secondary"} />
+          <CancelAction id={appointment.id} disabled={!canCancel} />
           <form action={resendAppointmentNotifications}>
             <input type="hidden" name="id" value={appointment.id} />
-            <Button className="w-full gap-2" variant="secondary">
+            <AppointmentActionButton pendingLabel="Reenviando..." variant={lastNotification?.status === "FAILED" ? "primary" : "secondary"}>
               <RotateCw aria-hidden className="h-4 w-4" />
               Reenviar WhatsApp
-            </Button>
+            </AppointmentActionButton>
           </form>
         </div>
       </div>
@@ -378,17 +456,17 @@ function StatusAction({
   status: AppointmentStatus;
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   label: string;
-  variant?: "secondary" | "danger";
+  variant?: "primary" | "secondary" | "success" | "danger";
   disabled?: boolean;
 }) {
   return (
     <form action={updateAppointmentStatus}>
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="status" value={status} />
-      <Button className="w-full gap-2" disabled={disabled} variant={variant}>
+      <AppointmentActionButton disabled={disabled} pendingLabel="Salvando..." variant={variant}>
         <Icon aria-hidden className="h-4 w-4" />
         {label}
-      </Button>
+      </AppointmentActionButton>
     </form>
   );
 }
@@ -412,11 +490,11 @@ function CancelAction({ id, disabled = false }: { id: string; disabled?: boolean
       <form action={updateAppointmentStatus} className="mt-2 rounded-[12px] border border-rose-100 bg-rose-50 p-2">
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="status" value="CANCELLED" />
-        <p className="mb-2 text-xs font-medium text-rose-700">Confirme para avisar cliente e profissional.</p>
-        <Button className="w-full gap-2" variant="danger">
+        <p className="mb-2 text-xs font-medium text-rose-700">Cancela o agendamento e registra tentativa de aviso.</p>
+        <AppointmentActionButton pendingLabel="Cancelando..." variant="danger">
           <XCircle aria-hidden className="h-4 w-4" />
           Confirmar cancelamento
-        </Button>
+        </AppointmentActionButton>
       </form>
     </details>
   );
@@ -427,16 +505,18 @@ function MetricCard({
   label,
   value,
   helper,
-  tone
+  tone,
+  href
 }: {
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   label: string;
   value: number;
   helper: string;
   tone: Tone;
+  href?: string;
 }) {
-  return (
-    <div className="flex min-w-0 items-center gap-4 rounded-[20px] border border-white bg-white/95 p-4 shadow-lg shadow-blue-950/5">
+  const content = (
+    <>
       <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[15px] ${toneClasses[tone]}`}>
         <Icon aria-hidden className="h-5 w-5" />
       </span>
@@ -445,15 +525,75 @@ function MetricCard({
         <p className="mt-1 truncate text-sm font-semibold text-[#082F8B]">{label}</p>
         <p className="mt-0.5 truncate text-xs text-slate-500">{helper}</p>
       </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="flex min-w-0 items-center gap-4 rounded-[20px] border border-white bg-white/95 p-4 shadow-lg shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 items-center gap-4 rounded-[20px] border border-white bg-white/95 p-4 shadow-lg shadow-blue-950/5">
+      {content}
     </div>
   );
 }
 
-function InfoPill({ label, value }: { label: string; value: string }) {
+function StatusPill({
+  icon: Icon,
+  label,
+  value,
+  tone
+}: {
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  label: string;
+  value: string;
+  tone: Tone;
+}) {
   return (
-    <div className="min-w-0 rounded-[14px] bg-[#F3F4F6] px-3 py-2">
-      <p className="text-xs font-semibold uppercase text-slate-400">{label}</p>
-      <p className="truncate text-sm font-semibold text-[#082F8B]">{value}</p>
+    <div className="flex min-w-0 items-center gap-3 rounded-[16px] bg-[#F3F4F6] px-3 py-3">
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] ${toneClasses[tone]}`}>
+        <Icon aria-hidden className="h-5 w-5" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase text-slate-500">{label}</p>
+        <p className="truncate text-sm font-semibold text-[#082F8B]">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function InfoPill({
+  icon: Icon,
+  label,
+  value,
+  tone = "neutral"
+}: {
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  label: string;
+  value: string;
+  tone?: "neutral" | "success" | "danger";
+}) {
+  const toneClass = {
+    neutral: "bg-[#F3F4F6] text-[#082F8B]",
+    success: "bg-emerald-50 text-emerald-700",
+    danger: "bg-rose-50 text-rose-700"
+  }[tone];
+
+  return (
+    <div className={`flex min-w-0 items-center gap-2 rounded-[14px] px-3 py-2 ${toneClass}`}>
+      <Icon aria-hidden className="h-4 w-4 shrink-0" />
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase opacity-70">{label}</p>
+        <p className="truncate text-sm font-semibold">{value}</p>
+      </div>
     </div>
   );
 }
@@ -471,6 +611,7 @@ function FilterLink({ active, href, children }: { active: boolean; href: string;
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={
         active
           ? "inline-flex min-h-11 touch-manipulation items-center rounded-full bg-[#0F5EF7] px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
@@ -501,6 +642,45 @@ function buildAppointmentWhere(status: StatusFilter, period: PeriodFilter, today
   }
 
   return where;
+}
+
+function parseActionId(value: FormDataEntryValue | null) {
+  const id = String(value ?? "").trim();
+  return id.length > 0 && id.length <= 128 ? id : null;
+}
+
+function parseActionStatus(value: FormDataEntryValue | null): AppointmentStatus | null {
+  const status = String(value ?? "");
+  return appointmentStatuses.includes(status as AppointmentStatus) ? (status as AppointmentStatus) : null;
+}
+
+function canTransitionStatus(current: AppointmentStatus, next: AppointmentStatus) {
+  if (current === next) return false;
+
+  const allowedTransitions: Record<AppointmentStatus, AppointmentStatus[]> = {
+    PENDING: ["CONFIRMED", "CANCELLED"],
+    CONFIRMED: ["COMPLETED", "CANCELLED"],
+    CANCELLED: [],
+    COMPLETED: []
+  };
+
+  return allowedTransitions[current].includes(next);
+}
+
+function getStatusCount(
+  rows: Array<{
+    status: AppointmentStatus;
+    _count: { _all: number };
+  }>,
+  status: AppointmentStatus
+) {
+  return rows.find((row) => row.status === status)?._count._all ?? 0;
+}
+
+function getNotificationSummary(notification: { status: string; error: string | null } | undefined) {
+  if (!notification) return { label: "sem registro", tone: "neutral" as const };
+  if (notification.status === "SENT") return { label: "enviada", tone: "success" as const };
+  return { label: "falhou", tone: "danger" as const };
 }
 
 function buildFilterHref({ status, period }: { status: StatusFilter; period: PeriodFilter }) {
@@ -543,6 +723,23 @@ function formatDateTime(value: Date) {
     timeZone: TIME_ZONE,
     dateStyle: "short",
     timeStyle: "short"
+  }).format(value);
+}
+
+function formatLongDate(value: Date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIME_ZONE,
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit"
+  }).format(value);
+}
+
+function formatDateShort(value: Date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit"
   }).format(value);
 }
 
