@@ -15,6 +15,7 @@ export function BusinessLogoField({
   defaultValue: string;
   defaultLogoUrl: string;
 }) {
+  const fieldRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState("");
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -28,18 +29,34 @@ export function BusinessLogoField({
     };
   }, [localPreviewUrl]);
 
+  useEffect(() => {
+    const form = fieldRef.current?.closest("form");
+    if (!form) return;
+
+    function handleSubmit(event: SubmitEvent) {
+      const input = fileInputRef.current;
+      const file = input?.files?.[0];
+      if (!file) return;
+
+      const error = getLogoFileError(file);
+      if (!error) return;
+
+      event.preventDefault();
+      setFileError(error);
+      input.value = "";
+    }
+
+    form.addEventListener("submit", handleSubmit, true);
+    return () => form.removeEventListener("submit", handleSubmit, true);
+  }, []);
+
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!allowedLogoTypes.has(file.type)) {
-      setFileError("Use apenas PNG, JPG ou WebP.");
-      event.target.value = "";
-      return;
-    }
-
-    if (file.size > maxLogoSizeBytes) {
-      setFileError("Logo muito grande. Envie uma imagem com ate 2 MB.");
+    const error = getLogoFileError(file);
+    if (error) {
+      setFileError(error);
       event.target.value = "";
       return;
     }
@@ -64,8 +81,7 @@ export function BusinessLogoField({
   }
 
   return (
-    <div className="space-y-3 lg:col-span-2">
-      <input type="hidden" name="currentLogoUrl" value={defaultValue} />
+    <div ref={fieldRef} className="space-y-3 lg:col-span-2">
       <input type="hidden" name="removeLogo" value={removeLogo ? "1" : "0"} />
 
       <div className="grid gap-3 rounded-[18px] border border-blue-100 bg-blue-50/40 p-3 sm:grid-cols-[96px_1fr]">
@@ -75,7 +91,7 @@ export function BusinessLogoField({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-[#082F8B]">Logo publico</p>
           <p className="mt-1 text-xs font-medium leading-5 text-slate-500">
-            A imagem enviada sera ajustada automaticamente para caber na tela de agendamento sem cortar ou quebrar o layout.
+            Tamanho recomendado: 512 x 512 px, em PNG, JPG ou WebP, com ate 2 MB. Logos quadrados ou com fundo transparente ficam melhores.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[12px] bg-[#0F5EF7] px-3 text-sm font-semibold text-white transition hover:bg-[#082F8B] focus-within:ring-2 focus-within:ring-[#0F5EF7] focus-within:ring-offset-2">
@@ -125,4 +141,10 @@ export function BusinessLogoField({
       </p>
     </div>
   );
+}
+
+function getLogoFileError(file: File) {
+  if (!allowedLogoTypes.has(file.type)) return "Use apenas PNG, JPG ou WebP.";
+  if (file.size > maxLogoSizeBytes) return "Logo muito grande. Envie uma imagem com ate 2 MB.";
+  return "";
 }

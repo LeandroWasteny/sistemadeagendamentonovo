@@ -262,12 +262,19 @@ function PreviewItem({ icon: Icon, label }: { icon: LucideIcon; label: string })
 async function resolveLogoUrl(formData: FormData) {
   const removeLogo = String(formData.get("removeLogo") ?? "") === "1";
   const linkUrl = String(formData.get("logoUrl") ?? "").trim();
-  const currentLogoUrl = String(formData.get("currentLogoUrl") ?? "").trim();
-  const fallbackUrl = linkUrl || currentLogoUrl;
   const logoFile = formData.get("logoFile");
 
   if (removeLogo) return defaultPublicBookingProfile.logoUrl;
-  if (!(logoFile instanceof File) || logoFile.size === 0) return validateLogoLink(fallbackUrl);
+  if (!(logoFile instanceof File) || logoFile.size === 0) {
+    if (linkUrl) return validateLogoLink(linkUrl);
+
+    const currentProfile = await prisma.businessProfile.findUnique({
+      where: { id: profileId },
+      select: { logoUrl: true }
+    });
+
+    return currentProfile?.logoUrl || defaultPublicBookingProfile.logoUrl;
+  }
 
   const mimeType = logoFile.type || inferMimeType(logoFile.name);
   if (!allowedLogoTypes.has(mimeType)) {
@@ -293,7 +300,7 @@ async function resolveLogoUrl(formData: FormData) {
 
 function validateLogoLink(url: string) {
   if (!url) return defaultPublicBookingProfile.logoUrl;
-  if (url.startsWith("data:")) return url;
+  if (url.startsWith("data:")) throw new Error("Cole um link do logo ou envie o arquivo pelo botao Trocar logo.");
   if (url.length > 2048) throw new Error("Link do logo muito longo.");
   if (url.startsWith("/") || url.startsWith("http://") || url.startsWith("https://")) return url;
   throw new Error("Use um link de logo valido, comecando por /, http:// ou https://.");
