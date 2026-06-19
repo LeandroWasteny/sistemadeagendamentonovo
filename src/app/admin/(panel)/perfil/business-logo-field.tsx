@@ -5,6 +5,8 @@ import { ImagePlus, RotateCcw, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 const acceptedLogoTypes = "image/png,image/jpeg,image/webp";
+const maxLogoSizeBytes = 2 * 1024 * 1024;
+const allowedLogoTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 export function BusinessLogoField({
   defaultValue,
@@ -16,6 +18,7 @@ export function BusinessLogoField({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState("");
   const [removeLogo, setRemoveLogo] = useState(false);
+  const [fileError, setFileError] = useState("");
   const hasUploadedLogo = defaultValue.startsWith("data:");
   const previewUrl = removeLogo ? defaultLogoUrl : localPreviewUrl || defaultValue || defaultLogoUrl;
 
@@ -29,20 +32,35 @@ export function BusinessLogoField({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!allowedLogoTypes.has(file.type)) {
+      setFileError("Use apenas PNG, JPG ou WebP.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > maxLogoSizeBytes) {
+      setFileError("Logo muito grande. Envie uma imagem com ate 2 MB.");
+      event.target.value = "";
+      return;
+    }
+
     if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     setLocalPreviewUrl(URL.createObjectURL(file));
     setRemoveLogo(false);
+    setFileError("");
   }
 
   function handleRemoveLogo() {
     if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
     setLocalPreviewUrl("");
     setRemoveLogo(true);
+    setFileError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function handleRestoreCurrent() {
     setRemoveLogo(false);
+    setFileError("");
   }
 
   return (
@@ -85,6 +103,11 @@ export function BusinessLogoField({
               </button>
             )}
           </div>
+          {fileError ? (
+            <p className="mt-2 rounded-[12px] border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+              {fileError}
+            </p>
+          ) : null}
         </div>
       </div>
 
