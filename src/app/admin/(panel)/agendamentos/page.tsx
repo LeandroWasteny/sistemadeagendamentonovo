@@ -350,7 +350,10 @@ export default async function AppointmentsPage({ searchParams }: { searchParams?
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[22px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
+      <div
+        id="lista-agendamentos"
+        className="scroll-mt-6 overflow-hidden rounded-[22px] border border-white bg-white/95 shadow-xl shadow-blue-950/5"
+      >
         <div className="border-b border-blue-50 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -935,7 +938,7 @@ function buildFilterHref({
 }
 
 function buildDayHref({ dateKey, status, monthKey }: { dateKey: string; status: StatusFilter; monthKey: string }) {
-  return buildFilterHref({ status, period: "upcoming", dateKey, monthKey });
+  return `${buildFilterHref({ status, period: "upcoming", dateKey, monthKey })}#lista-agendamentos`;
 }
 
 function buildMonthHref({ monthKey, status, period }: { monthKey: string; status: StatusFilter; period: PeriodFilter }) {
