@@ -25,13 +25,9 @@ export default async function AppointmentLookupPage() {
       <section className="mx-auto grid max-w-4xl gap-4">
         <div className="flex items-center gap-3 rounded-[24px] bg-[var(--booking-primary-dark)] p-3 text-white shadow-2xl shadow-blue-950/15">
           <div className="flex min-w-0 flex-1 items-center gap-3 rounded-[20px] bg-white/95 p-2.5 text-[var(--booking-text)]">
-            <img
-              src={profile.logoUrl}
-              alt={profile.businessName}
-              width={56}
-              height={56}
-              className="h-12 w-12 shrink-0 rounded-[16px] object-contain"
-            />
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-white p-1">
+              <img src={profile.logoUrl} alt={profile.businessName} width={56} height={56} className="h-full w-full object-contain" />
+            </span>
             <div className="min-w-0">
               <h1 className="font-display truncate text-xl font-semibold">{profile.businessName}</h1>
               <p className="text-sm font-medium text-[var(--booking-muted)]">{profile.tagline}</p>

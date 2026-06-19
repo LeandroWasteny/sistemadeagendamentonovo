@@ -1,21 +1,34 @@
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { Camera, MapPin, MessageCircle, Palette } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import sharp from "sharp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { prisma } from "@/lib/prisma";
 import { defaultPublicBookingProfile } from "@/lib/booking/public-profile";
+import { BusinessLogoField } from "./business-logo-field";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const profileId = "default";
 const maxLogoSizeBytes = 2 * 1024 * 1024;
-const allowedLogoTypes = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
+const maxLogoPixels = 16_000_000;
+const allowedLogoTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 async function saveProfile(formData: FormData) {
   "use server";
 
-  const logoUrl = await resolveLogoUrl(formData);
+  let logoUrl: string;
+
+  try {
+    logoUrl = await resolveLogoUrl(formData);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Nao foi possivel processar o logo.";
+    redirect(`/admin/perfil?logoError=${encodeURIComponent(message)}`);
+  }
+
   const data = {
     businessName: String(formData.get("businessName") ?? "").trim(),
     tagline: String(formData.get("tagline") ?? "").trim(),
@@ -79,7 +92,13 @@ async function restoreDefaultPalette() {
   revalidatePath("/agendar/consultar");
 }
 
-export default async function BusinessProfilePage() {
+export default async function BusinessProfilePage({
+  searchParams
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const logoError = getSearchParam(params, "logoError");
   const savedProfile = await prisma.businessProfile.findUnique({ where: { id: profileId } });
   const profile = savedProfile
     ? {
@@ -123,11 +142,16 @@ export default async function BusinessProfilePage() {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
           Essas informacoes aparecem na tela publica de agendamento dos clientes.
         </p>
+        {logoError ? (
+          <div className="mt-4 rounded-[16px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+            {logoError}
+          </div>
+        ) : null}
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <Field label="Nome do negocio" name="businessName" defaultValue={profile.businessName} required />
           <Field label="Frase curta" name="tagline" defaultValue={profile.tagline} required />
-          <LogoField defaultValue={profile.logoUrl} />
+          <BusinessLogoField defaultValue={profile.logoUrl} defaultLogoUrl={defaultPublicBookingProfile.logoUrl} />
           <Field label="Endereco ou atendimento" name="address" defaultValue={profile.address} required />
           <Field label="WhatsApp" name="whatsappUrl" defaultValue={profile.whatsappUrl} required />
           <Field label="Instagram" name="instagramUrl" defaultValue={profile.instagramUrl} required />
@@ -168,7 +192,9 @@ export default async function BusinessProfilePage() {
         <h2 className="font-display mt-1 text-xl font-semibold text-[#082F8B]">Como aparece para o cliente</h2>
         <div className="mt-5 rounded-[24px] p-4 text-white" style={{ backgroundColor: profile.primaryDark }}>
           <div className="flex items-center gap-3 rounded-[18px] bg-white p-3 text-[#082F8B]">
-            <img src={profile.logoUrl} alt="" className="h-12 w-12 rounded-[14px] object-contain" />
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-white">
+              <img src={profile.logoUrl} alt="" className="h-full w-full object-contain" />
+            </span>
             <div className="min-w-0">
               <p className="truncate text-lg font-semibold">{profile.businessName}</p>
               <p className="text-sm font-medium text-slate-500">{profile.tagline}</p>
@@ -204,37 +230,6 @@ function Field({
   );
 }
 
-function LogoField({ defaultValue }: { defaultValue: string }) {
-  const hasUploadedLogo = defaultValue.startsWith("data:");
-
-  return (
-    <div className="space-y-2 lg:col-span-2">
-      <input type="hidden" name="currentLogoUrl" value={defaultValue} />
-      <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
-        Link do logo
-        <Input
-          name="logoUrl"
-          defaultValue={hasUploadedLogo ? "" : defaultValue}
-          placeholder={hasUploadedLogo ? "Logo enviado por upload" : "/brand/logo-icon.png"}
-        />
-      </label>
-      <label className="block space-y-1.5 text-sm font-semibold text-[#082F8B]">
-        Enviar novo logo
-        <input
-          name="logoFile"
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
-          className="block w-full rounded-[12px] border border-blue-100 bg-white px-3 py-2 text-sm text-slate-500 file:mr-3 file:rounded-[10px] file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#0F5EF7]"
-        />
-      </label>
-      <p className="text-xs font-medium leading-5 text-slate-500">
-        Se enviar um arquivo, ele substitui o link acima. Use PNG, JPG, WebP ou SVG com ate 2 MB.
-        {hasUploadedLogo ? " Ja existe um logo enviado por upload." : ""}
-      </p>
-    </div>
-  );
-}
-
 function ColorField({ label, name, defaultValue }: { label: string; name: string; defaultValue: string }) {
   return (
     <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
@@ -265,15 +260,18 @@ function PreviewItem({ icon: Icon, label }: { icon: LucideIcon; label: string })
 }
 
 async function resolveLogoUrl(formData: FormData) {
+  const removeLogo = String(formData.get("removeLogo") ?? "") === "1";
   const linkUrl = String(formData.get("logoUrl") ?? "").trim();
   const currentLogoUrl = String(formData.get("currentLogoUrl") ?? "").trim();
   const fallbackUrl = linkUrl || currentLogoUrl;
   const logoFile = formData.get("logoFile");
 
-  if (!(logoFile instanceof File) || logoFile.size === 0) return fallbackUrl;
+  if (removeLogo) return defaultPublicBookingProfile.logoUrl;
+  if (!(logoFile instanceof File) || logoFile.size === 0) return validateLogoLink(fallbackUrl);
 
-  if (!allowedLogoTypes.has(logoFile.type)) {
-    throw new Error("Formato de logo invalido. Use PNG, JPG, WebP ou SVG.");
+  const mimeType = logoFile.type || inferMimeType(logoFile.name);
+  if (!allowedLogoTypes.has(mimeType)) {
+    throw new Error("Formato de logo invalido. Use PNG, JPG ou WebP.");
   }
 
   if (logoFile.size > maxLogoSizeBytes) {
@@ -281,5 +279,35 @@ async function resolveLogoUrl(formData: FormData) {
   }
 
   const bytes = Buffer.from(await logoFile.arrayBuffer());
-  return `data:${logoFile.type};base64,${bytes.toString("base64")}`;
+  const normalizedLogo = await sharp(bytes, { limitInputPixels: maxLogoPixels })
+    .rotate()
+    .resize(512, 512, {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    })
+    .webp({ quality: 86 })
+    .toBuffer();
+
+  return `data:image/webp;base64,${normalizedLogo.toString("base64")}`;
+}
+
+function validateLogoLink(url: string) {
+  if (!url) return defaultPublicBookingProfile.logoUrl;
+  if (url.startsWith("data:")) return url;
+  if (url.length > 2048) throw new Error("Link do logo muito longo.");
+  if (url.startsWith("/") || url.startsWith("http://") || url.startsWith("https://")) return url;
+  throw new Error("Use um link de logo valido, comecando por /, http:// ou https://.");
+}
+
+function inferMimeType(fileName: string) {
+  const extension = fileName.toLowerCase().split(".").pop();
+  if (extension === "png") return "image/png";
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "webp") return "image/webp";
+  return "";
+}
+
+function getSearchParam(params: Record<string, string | string[] | undefined> | undefined, key: string) {
+  const value = params?.[key];
+  return Array.isArray(value) ? value[0] : value;
 }
