@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  CreditCard,
   Home,
   LogOut,
   Menu,
@@ -18,6 +19,7 @@ import {
   Scissors,
   Store,
   Sun,
+  TicketPercent,
   Users
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -46,7 +48,11 @@ const groups = [
   },
   {
     label: "Analise",
-    links: [{ href: "/admin/relatorios", label: "Relatorios", icon: BarChart3 }]
+    links: [
+      { href: "/admin/relatorios", label: "Relatorios", icon: BarChart3 },
+      { href: "/admin/financeiro", label: "Financeiro", icon: CreditCard },
+      { href: "/admin/cupons", label: "Cupons", icon: TicketPercent }
+    ]
   },
   {
     label: "Configuracao",

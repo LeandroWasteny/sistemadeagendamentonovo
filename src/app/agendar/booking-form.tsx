@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Search,
   Send,
+  TicketPercent,
   UserRound
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -32,6 +33,8 @@ type ServiceOption = {
   promoPriceCents: number | null;
   promoActive: boolean;
   promoDiscountPercent: number;
+  promoStartsAt: Date | string | null;
+  promoEndsAt: Date | string | null;
   professionalIds: string[];
 };
 
@@ -80,6 +83,10 @@ export function BookingForm({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [lookupCode, setLookupCode] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponPreview, setCouponPreview] = useState<{ code: string; name: string; discount: string; finalPrice: string } | null>(null);
+  const [couponMessage, setCouponMessage] = useState("");
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const servicesRef = useRef<HTMLDivElement>(null);
   const slotsRef = useRef<HTMLDivElement>(null);
@@ -96,11 +103,13 @@ export function BookingForm({
   useEffect(() => {
     if (!professionalId) {
       setServiceId("");
+      clearCoupon();
       return;
     }
     const compatible = services.filter((service) => service.professionalIds.includes(professionalId));
     if (serviceId && !compatible.some((service) => service.id === serviceId)) {
       setServiceId("");
+      clearCoupon();
     }
   }, [professionalId, serviceId, services]);
 
@@ -143,6 +152,7 @@ export function BookingForm({
         startsAt: slot,
         clientName: formData.get("clientName"),
         clientPhone: formData.get("clientPhone"),
+        couponCode,
         notes: formData.get("notes")
       })
     });
@@ -163,6 +173,41 @@ export function BookingForm({
   const canMoveToSchedule = Boolean(serviceId && professionalId);
   const monthLabel = formatMonthLabel(monthCursor);
   const isCurrentMonth = isSameYearMonth(monthCursor, new Date());
+
+  async function handleCouponPreview() {
+    if (!selectedService || !couponCode.trim()) {
+      setCouponPreview(null);
+      setCouponMessage("Informe um cupom para aplicar.");
+      return;
+    }
+
+    setCheckingCoupon(true);
+    setCouponMessage("");
+    setCouponPreview(null);
+
+    const response = await fetch("/api/coupons/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serviceId: selectedService.id, code: couponCode })
+    });
+    const data = await response.json();
+    setCheckingCoupon(false);
+
+    if (response.ok) {
+      setCouponPreview(data);
+      setCouponCode(data.code);
+      setCouponMessage(`${data.name}: desconto de ${data.discount}.`);
+      return;
+    }
+
+    setCouponMessage(data.error ?? "Nao foi possivel aplicar o cupom.");
+  }
+
+  function clearCoupon() {
+    setCouponCode("");
+    setCouponPreview(null);
+    setCouponMessage("");
+  }
 
   return (
     <form action={handleSubmit} className="rounded-[28px] bg-[var(--booking-surface)] p-3 shadow-2xl shadow-blue-950/10 sm:p-4 md:p-6">
@@ -271,6 +316,7 @@ export function BookingForm({
                 onClick={() => {
                   setServiceId(service.id);
                   setSlot("");
+                  clearCoupon();
                 }}
                 aria-pressed={active}
               >
@@ -464,6 +510,7 @@ export function BookingForm({
         originalPriceCents={selectedService?.priceCents}
         promoActive={selectedService ? isPromotionActive(selectedService) : false}
         promoDiscountPercent={selectedService ? getPromotionPercent(selectedService) : 0}
+        couponPreview={couponPreview}
         slot={slot}
       />
       <section className="mt-5">
@@ -489,6 +536,43 @@ export function BookingForm({
           Observacao
           <Textarea name="notes" autoComplete="off" placeholder="Opcional" className="min-h-20" />
         </label>
+        <div className="mt-3 rounded-[18px] border border-blue-100 bg-blue-50/35 p-3">
+          <label className="space-y-1.5 text-sm font-semibold text-[var(--booking-text)]">
+            Cupom
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <Input
+                value={couponCode}
+                onChange={(event) => {
+                  setCouponCode(event.target.value.toUpperCase());
+                  setCouponPreview(null);
+                  setCouponMessage("");
+                }}
+                placeholder="Ex.: BEMVINDO10"
+                autoComplete="off"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-11 gap-2 rounded-[14px]"
+                disabled={checkingCoupon || !selectedService}
+                onClick={handleCouponPreview}
+              >
+                {checkingCoupon ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : <TicketPercent aria-hidden className="h-4 w-4" />}
+                Aplicar
+              </Button>
+            </div>
+          </label>
+          {couponMessage && (
+            <p className={cn("mt-2 text-sm font-semibold", couponPreview ? "text-[var(--booking-accent)]" : "text-amber-700")}>
+              {couponMessage}
+            </p>
+          )}
+          {couponPreview && (
+            <button type="button" className="mt-2 text-sm font-semibold text-[var(--booking-primary)]" onClick={clearCoupon}>
+              Remover cupom
+            </button>
+          )}
+        </div>
       </section>
 
       <Button type="button" variant="secondary" className="mt-4 h-12 w-full rounded-[16px]" onClick={() => setCurrentStep(2)}>
@@ -600,6 +684,7 @@ function BookingSummary({
   originalPriceCents,
   promoActive,
   promoDiscountPercent,
+  couponPreview,
   slot
 }: {
   serviceName: string | undefined;
@@ -608,6 +693,7 @@ function BookingSummary({
   originalPriceCents: number | undefined;
   promoActive: boolean;
   promoDiscountPercent: number;
+  couponPreview: { code: string; name: string; discount: string; finalPrice: string } | null;
   slot: string;
 }) {
   const slotParts = getSlotParts(slot);
@@ -625,11 +711,19 @@ function BookingSummary({
         <div className="border-t border-slate-200 pt-3">
           <SummaryRow
             label="Valor"
-            value={priceCents === undefined ? "-" : formatCurrency(priceCents)}
+            value={couponPreview ? couponPreview.finalPrice : priceCents === undefined ? "-" : formatCurrency(priceCents)}
             helper={promoActive && originalPriceCents !== undefined ? formatCurrency(originalPriceCents) : undefined}
             badge={promoActive ? `${promoDiscountPercent}% OFF` : undefined}
             valueClassName={promoActive ? "font-bold text-[var(--booking-accent)]" : "font-bold text-[var(--booking-text)]"}
           />
+          {couponPreview && (
+            <SummaryRow
+              label="Cupom"
+              value={`-${couponPreview.discount}`}
+              badge={couponPreview.code}
+              valueClassName="font-bold text-[var(--booking-accent)]"
+            />
+          )}
         </div>
       </div>
     </div>

@@ -80,6 +80,8 @@ export default async function BookingPage() {
               promoPriceCents: service.promoPriceCents,
               promoActive: service.promoActive,
               promoDiscountPercent: service.promoDiscountPercent,
+              promoStartsAt: service.promoStartsAt,
+              promoEndsAt: service.promoEndsAt,
               professionalIds: service.professionals.map((item) => item.professionalId)
             }))}
             professionals={professionals.map((professional) => ({

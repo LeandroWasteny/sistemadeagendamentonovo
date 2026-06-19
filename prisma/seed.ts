@@ -74,6 +74,20 @@ async function main() {
     }
   });
 
+  await prisma.coupon.upsert({
+    where: { code: "BEMVINDO10" },
+    update: {},
+    create: {
+      code: "BEMVINDO10",
+      name: "Boas-vindas",
+      discountType: "PERCENT",
+      discountValue: 10,
+      minAmountCents: 5000,
+      usageLimit: 100,
+      active: true
+    }
+  });
+
   const camila = await prisma.professional.upsert({
     where: { id: "seed-professional-camila" },
     update: {},

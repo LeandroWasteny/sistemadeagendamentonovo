@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getAppointmentLookupCode, normalizeLookupCode } from "@/lib/booking/lookup-code";
 import { normalizeBrazilPhone } from "@/lib/notifications/templates";
 import { prisma } from "@/lib/prisma";
-import { getEffectivePriceCents } from "@/lib/services/pricing";
+import { getAppointmentFinalPriceCents } from "@/lib/services/pricing";
 import { formatCurrency, statusLabel } from "@/lib/utils";
 
 const lookupSchema = z.object({
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       serviceName: appointment.service.name,
       professionalName: appointment.professional.name,
       startsAt: appointment.startsAt,
-      price: formatCurrency(getEffectivePriceCents(appointment.service))
+      price: formatCurrency(getAppointmentFinalPriceCents(appointment))
     }
   });
 }

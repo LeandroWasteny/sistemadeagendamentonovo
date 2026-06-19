@@ -35,6 +35,8 @@ type ServiceFormInput = {
   promoPriceCents: number | null;
   promoActive: boolean;
   promoDiscountPercent: number;
+  promoStartsAt: Date | null;
+  promoEndsAt: Date | null;
   sortOrder: number;
 };
 type Tone = "blue" | "green" | "amber" | "rose" | "sky";
@@ -241,6 +243,14 @@ export default async function ServicesPage({ searchParams }: { searchParams?: Se
               <input name="promoActive" type="checkbox" />
               Destacar como promocao quando tiver desconto
             </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Inicio da promocao">
+                <Input name="promoStartsAt" type="date" />
+              </Field>
+              <Field label="Fim da promocao">
+                <Input name="promoEndsAt" type="date" />
+              </Field>
+            </div>
             <ProfessionalChecklist professionals={professionals} selectedIds={[]} />
             <label className="flex min-h-11 items-center gap-2 rounded-[14px] bg-blue-50/60 px-3 text-sm font-semibold text-[#082F8B]">
               <input name="active" type="checkbox" defaultChecked />
@@ -314,6 +324,8 @@ function ServiceCard({
     promoPriceCents: number | null;
     promoActive: boolean;
     promoDiscountPercent: number;
+    promoStartsAt: Date | null;
+    promoEndsAt: Date | null;
     sortOrder: number;
     active: boolean;
     professionals: Array<{ professionalId: string; professional: { name: string; active: boolean } }>;
@@ -354,6 +366,11 @@ function ServiceCard({
                 {formatCurrency(getEffectivePriceCents(service))}
               </p>
               {hasPromotion && <p className="text-xs font-semibold text-[#22C55E]">-{promotionPercent}% promocao</p>}
+              {service.promoActive && (service.promoStartsAt || service.promoEndsAt) && (
+                <p className="text-xs font-semibold text-slate-500">
+                  {formatPromoPeriod(service.promoStartsAt, service.promoEndsAt)}
+                </p>
+              )}
             </div>
           </div>
 
@@ -450,6 +467,12 @@ function ServiceCard({
             <input name="promoActive" type="checkbox" defaultChecked={service.promoActive} />
             Destacar como promocao quando tiver desconto
           </label>
+          <Field label="Inicio promocao">
+            <Input name="promoStartsAt" type="date" defaultValue={toDateInputValue(service.promoStartsAt)} />
+          </Field>
+          <Field label="Fim promocao">
+            <Input name="promoEndsAt" type="date" defaultValue={toDateInputValue(service.promoEndsAt)} />
+          </Field>
           <div className="xl:col-span-4">
             <ProfessionalChecklist professionals={professionals} selectedIds={selectedProfessionalIds} />
           </div>
@@ -574,6 +597,8 @@ function parseServiceForm(formData: FormData): ServiceFormInput | null {
   const durationMinutes = Number(formData.get("durationMinutes"));
   const price = Number(formData.get("price"));
   const promoDiscountPercent = Number(formData.get("promoDiscountPercent") ?? 0);
+  const promoStartsAt = parseOptionalDate(formData.get("promoStartsAt"), "start");
+  const promoEndsAt = parseOptionalDate(formData.get("promoEndsAt"), "end");
   const sortOrder = Number(formData.get("sortOrder"));
 
   if (name.length < 2 || name.length > 80) return null;
@@ -581,6 +606,8 @@ function parseServiceForm(formData: FormData): ServiceFormInput | null {
   if (!Number.isFinite(durationMinutes) || durationMinutes < 5 || durationMinutes > 480) return null;
   if (!Number.isFinite(price) || price < 0 || price > 99999) return null;
   if (!Number.isFinite(promoDiscountPercent) || promoDiscountPercent < 0 || promoDiscountPercent > 95) return null;
+  if (promoStartsAt.invalid || promoEndsAt.invalid) return null;
+  if (promoStartsAt.value && promoEndsAt.value && promoStartsAt.value > promoEndsAt.value) return null;
   if (!Number.isFinite(sortOrder) || sortOrder < 0 || sortOrder > 9999) return null;
 
   const roundedDiscount = Math.round(promoDiscountPercent);
@@ -593,6 +620,8 @@ function parseServiceForm(formData: FormData): ServiceFormInput | null {
     promoPriceCents: null,
     promoActive: formData.get("promoActive") === "on" && roundedDiscount > 0,
     promoDiscountPercent: roundedDiscount,
+    promoStartsAt: promoStartsAt.value,
+    promoEndsAt: promoEndsAt.value,
     sortOrder: Math.round(sortOrder)
   };
 }
@@ -657,4 +686,30 @@ function revalidateServicePaths() {
   revalidatePath("/admin");
   revalidatePath("/admin/servicos");
   revalidatePath("/agendar");
+}
+
+function parseOptionalDate(value: FormDataEntryValue | null, mode: "start" | "end") {
+  const raw = normalizeText(value);
+  if (!raw) return { value: null, invalid: false };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return { value: null, invalid: true };
+  return {
+    value: new Date(`${raw}T${mode === "start" ? "00:00:00.000" : "23:59:59.999"}-03:00`),
+    invalid: false
+  };
+}
+
+function toDateInputValue(value: Date | null) {
+  if (!value) return "";
+  return value.toISOString().slice(0, 10);
+}
+
+function formatPromoPeriod(startsAt: Date | null, endsAt: Date | null) {
+  if (startsAt && endsAt) return `${formatDate(startsAt)} ate ${formatDate(endsAt)}`;
+  if (startsAt) return `a partir de ${formatDate(startsAt)}`;
+  if (endsAt) return `ate ${formatDate(endsAt)}`;
+  return "";
+}
+
+function formatDate(value: Date) {
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(value);
 }

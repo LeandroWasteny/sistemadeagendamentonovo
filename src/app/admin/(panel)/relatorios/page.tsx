@@ -1,7 +1,8 @@
-import { Activity, BadgeCheck, CalendarClock, CircleX, Clock3, ListChecks, Scissors, TrendingUp, Users } from "lucide-react";
+import { Activity, BadgeCheck, BadgePercent, CalendarClock, CircleX, Clock3, ListChecks, Scissors, TicketPercent, TrendingUp, Users } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { prisma } from "@/lib/prisma";
-import { statusLabel } from "@/lib/utils";
+import { getAppointmentDiscountCents } from "@/lib/services/pricing";
+import { formatCurrency, statusLabel } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,8 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
     },
     include: {
       service: true,
-      professional: true
+      professional: true,
+      coupon: true
     },
     orderBy: { startsAt: "asc" }
   });
@@ -44,6 +46,9 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
   const activeAppointments = confirmed + completed;
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   const cancellationRate = total > 0 ? Math.round((cancelled / total) * 100) : 0;
+  const discountedAppointments = appointments.filter((appointment) => getAppointmentDiscountCents(appointment) > 0);
+  const couponAppointments = appointments.filter((appointment) => appointment.couponId !== null);
+  const totalDiscounts = discountedAppointments.reduce((sum, appointment) => sum + getAppointmentDiscountCents(appointment), 0);
 
   const statusRows = [
     { status: "PENDING", value: pending },
@@ -54,6 +59,8 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
 
   const serviceRows = rankBy(appointments, (appointment) => appointment.service.name);
   const professionalRows = rankBy(appointments, (appointment) => appointment.professional.name);
+  const promotionRows = rankMoney(discountedAppointments, (appointment) => appointment.service.name);
+  const couponRows = rankMoney(couponAppointments, (appointment) => appointment.coupon?.code ?? "Cupom removido");
   const dailyRows = rankBy(appointments, (appointment) => toDateKey(appointment.startsAt), "date").sort((a, b) => a.key.localeCompare(b.key));
   const nextAppointments = appointments
     .filter((appointment) => appointment.status !== "CANCELLED" && appointment.startsAt >= new Date())
@@ -100,6 +107,12 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
         <MetricCard icon={Clock3} label="Pendentes" value={pending} helper="Aguardando confirmacao" tone="amber" />
         <MetricCard icon={CircleX} label="Cancelados" value={`${cancellationRate}%`} helper={`${cancelled} cancelamento(s)`} tone="rose" />
         <MetricCard icon={TrendingUp} label="Conclusao" value={`${completionRate}%`} helper={`${completed} concluido(s)`} tone="sky" />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard icon={BadgePercent} label="Com desconto" value={discountedAppointments.length} helper="promocao ou cupom" tone="green" />
+        <MetricCard icon={TicketPercent} label="Cupons usados" value={couponAppointments.length} helper="no periodo" tone="amber" />
+        <MetricCard icon={BadgePercent} label="Descontos" value={formatCurrency(totalDiscounts)} helper="concedidos" tone="rose" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -149,6 +162,32 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
             </div>
           ) : (
             <EmptyState>Sem profissionais com agendamentos neste periodo.</EmptyState>
+          )}
+        </ReportPanel>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <ReportPanel title="Promocoes por servico" icon={BadgePercent}>
+          {promotionRows.length > 0 ? (
+            <div className="space-y-3">
+              {promotionRows.map((row) => (
+                <MoneyProgressRow key={row.key} label={row.key} value={row.value} count={row.count} max={totalDiscounts} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState>Nenhum desconto aplicado no periodo.</EmptyState>
+          )}
+        </ReportPanel>
+
+        <ReportPanel title="Cupons mais usados" icon={TicketPercent}>
+          {couponRows.length > 0 ? (
+            <div className="space-y-3">
+              {couponRows.map((row) => (
+                <MoneyProgressRow key={row.key} label={row.key} value={row.value} count={row.count} max={totalDiscounts} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState>Nenhum cupom usado neste periodo.</EmptyState>
           )}
         </ReportPanel>
       </div>
@@ -250,6 +289,22 @@ function ProgressRow({ label, value, max }: { label: string; value: number; max:
   );
 }
 
+function MoneyProgressRow({ label, value, count, max }: { label: string; value: number; count: number; max: number }) {
+  const width = max > 0 ? Math.max(8, Math.round((value / max) * 100)) : 0;
+  return (
+    <div>
+      <div className="mb-1 flex min-w-0 items-center justify-between gap-3 text-sm">
+        <span className="min-w-0 truncate font-semibold text-[#082F8B]">{label}</span>
+        <span className="shrink-0 font-semibold tabular-nums text-slate-500">{formatCurrency(value)}</span>
+      </div>
+      <div className="h-3 overflow-hidden rounded-full bg-[#F3F4F6]">
+        <div className="h-full rounded-full bg-[linear-gradient(90deg,#22C55E,#38BDF8)]" style={{ width: `${width}%` }} />
+      </div>
+      <p className="mt-1 text-xs font-medium text-slate-400">{count} agendamento(s)</p>
+    </div>
+  );
+}
+
 function EmptyState({ children }: { children: ReactNode }) {
   return <p className="rounded-[16px] bg-[#F3F4F6] px-4 py-3 text-sm font-medium text-slate-500">{children}</p>;
 }
@@ -263,6 +318,22 @@ function rankBy<T>(items: T[], getKey: (item: T) => string, mode: "rank" | "date
 
   const rows = Array.from(map.entries()).map(([key, value]) => ({ key, value }));
   return mode === "date" ? rows : rows.sort((a, b) => b.value - a.value).slice(0, 8);
+}
+
+function rankMoney<T>(items: T[], getKey: (item: T) => string) {
+  const map = new Map<string, { value: number; count: number }>();
+  items.forEach((item) => {
+    const key = getKey(item);
+    const current = map.get(key) ?? { value: 0, count: 0 };
+    current.value += getAppointmentDiscountCents(item as T & Parameters<typeof getAppointmentDiscountCents>[0]);
+    current.count += 1;
+    map.set(key, current);
+  });
+
+  return Array.from(map.entries())
+    .map(([key, row]) => ({ key, ...row }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8);
 }
 
 function getFirstValue(value: string | string[] | undefined) {

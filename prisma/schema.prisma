@@ -23,6 +23,11 @@ enum NotificationStatus {
   FAILED
 }
 
+enum CouponDiscountType {
+  PERCENT
+  FIXED
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -41,6 +46,8 @@ model Service {
   promoPriceCents Int?
   promoActive     Boolean       @default(false)
   promoDiscountPercent Int       @default(0)
+  promoStartsAt   DateTime?
+  promoEndsAt     DateTime?
   sortOrder       Int           @default(0)
   active          Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -99,15 +106,40 @@ model Appointment {
   startsAt       DateTime
   endsAt         DateTime
   status         AppointmentStatus @default(PENDING)
+  priceCents     Int?
+  discountCents  Int               @default(0)
+  finalPriceCents Int?
   serviceId      String
   professionalId String
+  couponId       String?
   service        Service           @relation(fields: [serviceId], references: [id])
   professional   Professional      @relation(fields: [professionalId], references: [id])
+  coupon         Coupon?           @relation(fields: [couponId], references: [id])
   notifications  NotificationLog[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
   @@index([professionalId, startsAt])
+  @@index([couponId])
+}
+
+model Coupon {
+  id             String             @id @default(cuid())
+  code           String             @unique
+  name           String
+  discountType   CouponDiscountType @default(PERCENT)
+  discountValue  Int
+  minAmountCents Int                @default(0)
+  usageLimit     Int?
+  usedCount      Int                @default(0)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  active         Boolean            @default(true)
+  appointments   Appointment[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([active, startsAt, endsAt])
 }
 
 model NotificationLog {
