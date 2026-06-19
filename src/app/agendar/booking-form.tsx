@@ -509,7 +509,7 @@ function ProgressSteps({
   const steps: Array<{ id: 1 | 2 | 3; label: string }> = [
     { id: 1, label: "Serviço" },
     { id: 2, label: "Horário" },
-    { id: 3, label: "Dados" }
+    { id: 3, label: "Seus dados" }
   ];
 
   return (
@@ -564,8 +564,8 @@ function BookingSummary({
   const slotParts = getSlotParts(slot);
 
   return (
-    <div className="mt-5 overflow-hidden rounded-[16px] border border-slate-200 bg-white text-sm text-[var(--booking-text)] shadow-sm">
-      <div className="bg-slate-200 px-4 py-3 text-xs font-bold uppercase tracking-[0.08em] text-slate-900">
+    <div className="mt-5 overflow-hidden rounded-[16px] border border-blue-100 bg-white text-sm text-[var(--booking-text)] shadow-sm shadow-blue-950/5">
+      <div className="border-b border-blue-100 bg-[var(--booking-bg)] px-4 py-3 text-xs font-bold uppercase tracking-[0.08em] text-[var(--booking-text)]">
         Resumo do agendamento
       </div>
       <div className="space-y-2 px-4 py-4">
@@ -577,7 +577,7 @@ function BookingSummary({
           <SummaryRow
             label="Valor"
             value={priceCents === undefined ? "-" : formatCurrency(priceCents)}
-            valueClassName="font-bold text-emerald-600"
+            valueClassName="font-bold text-[var(--booking-text)]"
           />
         </div>
       </div>
@@ -596,8 +596,8 @@ function SummaryRow({
 }) {
   return (
     <div className="grid grid-cols-[minmax(86px,0.7fr)_minmax(0,1.3fr)] gap-3 text-base leading-6">
-      <span className="text-slate-700">{label}</span>
-      <span className={cn("min-w-0 text-right font-semibold text-slate-950", valueClassName)}>{value}</span>
+      <span className="text-[var(--booking-muted)]">{label}</span>
+      <span className={cn("min-w-0 text-right font-semibold text-[var(--booking-text)]", valueClassName)}>{value}</span>
     </div>
   );
 }
