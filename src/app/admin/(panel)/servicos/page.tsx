@@ -3,8 +3,10 @@ import { revalidatePath } from "next/cache";
 import {
   AlertTriangle,
   BadgeCheck,
+  BadgePercent,
   BriefcaseBusiness,
   Clock3,
+  ListOrdered,
   Pencil,
   Plus,
   Search,
@@ -23,12 +25,15 @@ import { ServiceActionButton } from "./service-action-button";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-type ServiceStatusFilter = "all" | "active" | "inactive" | "without-professional";
+type ServiceStatusFilter = "all" | "active" | "inactive" | "without-professional" | "with-promo";
 type ServiceFormInput = {
   name: string;
   description: string;
   durationMinutes: number;
   priceCents: number;
+  promoPriceCents: number | null;
+  promoActive: boolean;
+  sortOrder: number;
 };
 type Tone = "blue" | "green" | "amber" | "rose" | "sky";
 
@@ -36,7 +41,8 @@ const statusFilters: Array<{ value: ServiceStatusFilter; label: string }> = [
   { value: "all", label: "Todos" },
   { value: "active", label: "Ativos" },
   { value: "inactive", label: "Inativos" },
-  { value: "without-professional", label: "Sem profissional" }
+  { value: "without-professional", label: "Sem profissional" },
+  { value: "with-promo", label: "Com promocao" }
 ];
 
 const toneClasses: Record<Tone, string> = {
@@ -53,11 +59,21 @@ async function createService(formData: FormData) {
 
   const input = parseServiceForm(formData);
   if (!input) return;
+  const professionalIds = parseProfessionalIds(formData);
 
-  await prisma.service.create({
-    data: {
-      ...input,
-      active: formData.get("active") === "on"
+  await prisma.$transaction(async (tx) => {
+    const service = await tx.service.create({
+      data: {
+        ...input,
+        active: formData.get("active") === "on"
+      }
+    });
+
+    if (professionalIds.length > 0) {
+      await tx.professionalService.createMany({
+        data: professionalIds.map((professionalId) => ({ professionalId, serviceId: service.id })),
+        skipDuplicates: true
+      });
     }
   });
 
@@ -85,11 +101,21 @@ async function updateService(formData: FormData) {
 
   const id = parseActionId(formData.get("id"));
   const input = parseServiceForm(formData);
+  const professionalIds = parseProfessionalIds(formData);
   if (!id || !input) return;
 
-  await prisma.service.update({
-    where: { id },
-    data: input
+  await prisma.$transaction(async (tx) => {
+    await tx.service.update({
+      where: { id },
+      data: input
+    });
+    await tx.professionalService.deleteMany({ where: { serviceId: id } });
+    if (professionalIds.length > 0) {
+      await tx.professionalService.createMany({
+        data: professionalIds.map((professionalId) => ({ professionalId, serviceId: id })),
+        skipDuplicates: true
+      });
+    }
   });
 
   revalidateServicePaths();
@@ -121,24 +147,26 @@ export default async function ServicesPage({ searchParams }: { searchParams?: Se
   const query = normalizeText(getFirstValue(params.q) ?? "");
   const where = buildServiceWhere(status, query);
 
-  const [services, totalServices, activeTotal, inactiveTotal, withoutProfessionalTotal] = await Promise.all([
+  const [services, professionals, totalServices, activeTotal, inactiveTotal, withoutProfessionalTotal, promoTotal] = await Promise.all([
     prisma.service.findMany({
       where,
       include: {
         professionals: { include: { professional: true } },
         _count: { select: { appointments: true } }
       },
-      orderBy: [{ active: "desc" }, { createdAt: "desc" }]
+      orderBy: [{ active: "desc" }, { sortOrder: "asc" }, { name: "asc" }]
     }),
+    prisma.professional.findMany({ orderBy: { name: "asc" } }),
     prisma.service.count(),
     prisma.service.count({ where: { active: true } }),
     prisma.service.count({ where: { active: false } }),
-    prisma.service.count({ where: { professionals: { none: {} } } })
+    prisma.service.count({ where: { professionals: { none: {} } } }),
+    prisma.service.count({ where: { promoActive: true, promoPriceCents: { not: null } } })
   ]);
   const averagePrice =
     totalServices > 0
       ? Math.round(
-          services.reduce((sum, service) => sum + service.priceCents, 0) / Math.max(services.length, 1)
+          services.reduce((sum, service) => sum + getEffectivePriceCents(service), 0) / Math.max(services.length, 1)
         )
       : 0;
 
@@ -169,6 +197,7 @@ export default async function ServicesPage({ searchParams }: { searchParams?: Se
         <MetricCard icon={BriefcaseBusiness} label="Total" value={totalServices} helper="servicos cadastrados" tone="blue" />
         <MetricCard icon={BadgeCheck} label="Ativos" value={activeTotal} helper="visiveis para agenda" tone="green" />
         <MetricCard icon={AlertTriangle} label="Sem profissional" value={withoutProfessionalTotal} helper="precisam de vinculo" tone="amber" />
+        <MetricCard icon={BadgePercent} label="Promocoes" value={promoTotal} helper="com preco promocional" tone="rose" />
         <MetricCard icon={Clock3} label="Preco medio" value={formatCurrency(averagePrice)} helper="nos filtros atuais" tone="sky" />
       </div>
 
@@ -198,6 +227,19 @@ export default async function ServicesPage({ searchParams }: { searchParams?: Se
                 <Input name="price" type="number" min="0" max="99999" step="0.01" placeholder="90.00" required />
               </Field>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Ordem">
+                <Input name="sortOrder" type="number" min="0" max="9999" step="1" placeholder="1" defaultValue={0} required />
+              </Field>
+              <Field label="Preco promocional">
+                <Input name="promoPrice" type="number" min="0" max="99999" step="0.01" placeholder="Opcional" />
+              </Field>
+            </div>
+            <label className="flex min-h-11 items-center gap-2 rounded-[14px] bg-rose-50 px-3 text-sm font-semibold text-rose-700">
+              <input name="promoActive" type="checkbox" />
+              Destacar como promocao
+            </label>
+            <ProfessionalChecklist professionals={professionals} selectedIds={[]} />
             <label className="flex min-h-11 items-center gap-2 rounded-[14px] bg-blue-50/60 px-3 text-sm font-semibold text-[#082F8B]">
               <input name="active" type="checkbox" defaultChecked />
               Ativo na tela publica
@@ -240,7 +282,7 @@ export default async function ServicesPage({ searchParams }: { searchParams?: Se
             </div>
             <div className="divide-y divide-blue-50">
               {services.map((service) => (
-                <ServiceCard key={service.id} service={service} />
+                <ServiceCard key={service.id} service={service} professionals={professionals} />
               ))}
               {services.length === 0 && (
                 <div className="p-5">
@@ -258,7 +300,8 @@ export default async function ServicesPage({ searchParams }: { searchParams?: Se
 }
 
 function ServiceCard({
-  service
+  service,
+  professionals
 }: {
   service: {
     id: string;
@@ -266,12 +309,18 @@ function ServiceCard({
     description: string;
     durationMinutes: number;
     priceCents: number;
+    promoPriceCents: number | null;
+    promoActive: boolean;
+    sortOrder: number;
     active: boolean;
     professionals: Array<{ professionalId: string; professional: { name: string; active: boolean } }>;
     _count: { appointments: number };
   };
+  professionals: Array<{ id: string; name: string; active: boolean }>;
 }) {
   const canDelete = service._count.appointments === 0;
+  const hasPromotion = isPromotionActive(service);
+  const selectedProfessionalIds = service.professionals.map((item) => item.professionalId);
 
   return (
     <article className="p-5">
@@ -293,13 +342,20 @@ function ServiceCard({
               </div>
               <p className="mt-2 max-w-3xl break-words text-sm leading-6 text-slate-500">{service.description}</p>
             </div>
-            <p className="rounded-[14px] bg-blue-50 px-4 py-2 text-lg font-semibold text-[#0F5EF7]">
-              {formatCurrency(service.priceCents)}
-            </p>
+            <div className={hasPromotion ? "rounded-[14px] bg-emerald-50 px-4 py-2 text-right" : "rounded-[14px] bg-blue-50 px-4 py-2 text-right"}>
+              {hasPromotion && (
+                <p className="text-xs font-semibold text-slate-400 line-through">{formatCurrency(service.priceCents)}</p>
+              )}
+              <p className={hasPromotion ? "text-lg font-semibold text-[#22C55E]" : "text-lg font-semibold text-[#0F5EF7]"}>
+                {formatCurrency(getEffectivePriceCents(service))}
+              </p>
+              {hasPromotion && <p className="text-xs font-semibold text-[#22C55E]">promocao</p>}
+            </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="mt-4 grid gap-2 sm:grid-cols-4">
             <InfoPill icon={Clock3} label="Duracao" value={`${service.durationMinutes} min`} />
+            <InfoPill icon={ListOrdered} label="Ordem" value={String(service.sortOrder)} />
             <InfoPill icon={UsersRound} label="Profissionais" value={String(service.professionals.length)} />
             <InfoPill icon={BriefcaseBusiness} label="Agendamentos" value={String(service._count.appointments)} />
           </div>
@@ -366,7 +422,7 @@ function ServiceCard({
           <Pencil aria-hidden className="h-4 w-4" />
           Editar informacoes
         </summary>
-        <form action={updateService} className="grid gap-3 border-t border-blue-50 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_110px_120px_auto] xl:items-end">
+        <form action={updateService} className="grid gap-3 border-t border-blue-50 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_110px_120px] xl:items-end">
           <input type="hidden" name="id" value={service.id} />
           <Field label="Nome">
             <Input name="name" defaultValue={service.name} maxLength={80} required />
@@ -380,7 +436,20 @@ function ServiceCard({
           <Field label="Preco">
             <Input name="price" type="number" min="0" max="99999" step="0.01" defaultValue={service.priceCents / 100} required />
           </Field>
-          <ServiceActionButton className="w-full gap-2 xl:w-auto" pendingLabel="Atualizando..." variant="secondary">
+          <Field label="Ordem">
+            <Input name="sortOrder" type="number" min="0" max="9999" step="1" defaultValue={service.sortOrder} required />
+          </Field>
+          <Field label="Preco promocional">
+            <Input name="promoPrice" type="number" min="0" max="99999" step="0.01" defaultValue={service.promoPriceCents ? service.promoPriceCents / 100 : ""} />
+          </Field>
+          <label className="flex min-h-11 items-center gap-2 rounded-[14px] bg-rose-50 px-3 text-sm font-semibold text-rose-700 xl:col-span-2">
+            <input name="promoActive" type="checkbox" defaultChecked={service.promoActive} />
+            Destacar como promocao quando tiver preco promocional
+          </label>
+          <div className="xl:col-span-4">
+            <ProfessionalChecklist professionals={professionals} selectedIds={selectedProfessionalIds} />
+          </div>
+          <ServiceActionButton className="w-full gap-2 xl:col-span-4" pendingLabel="Atualizando..." variant="secondary">
             <Pencil aria-hidden className="h-4 w-4" />
             Atualizar
           </ServiceActionButton>
@@ -437,6 +506,39 @@ function InfoPill({
   );
 }
 
+function ProfessionalChecklist({
+  professionals,
+  selectedIds
+}: {
+  professionals: Array<{ id: string; name: string; active: boolean }>;
+  selectedIds: string[];
+}) {
+  return (
+    <fieldset className="rounded-[16px] border border-blue-100 bg-blue-50/40 p-3">
+      <legend className="px-1 text-sm font-semibold text-[#082F8B]">Profissionais que atendem</legend>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        {professionals.map((professional) => (
+          <label key={professional.id} className="flex min-h-9 items-center gap-2 text-sm font-medium text-slate-600">
+            <input
+              name="professionalIds"
+              type="checkbox"
+              value={professional.id}
+              defaultChecked={selectedIds.includes(professional.id)}
+            />
+            <span className="min-w-0 truncate">
+              {professional.name}
+              {!professional.active && <span className="text-slate-400"> (inativa)</span>}
+            </span>
+          </label>
+        ))}
+        {professionals.length === 0 && (
+          <p className="text-sm font-medium text-slate-500">Cadastre uma profissional para vincular servicos.</p>
+        )}
+      </div>
+    </fieldset>
+  );
+}
+
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
@@ -467,17 +569,25 @@ function parseServiceForm(formData: FormData): ServiceFormInput | null {
   const description = normalizeText(formData.get("description"));
   const durationMinutes = Number(formData.get("durationMinutes"));
   const price = Number(formData.get("price"));
+  const promoPriceRaw = normalizeText(formData.get("promoPrice"));
+  const promoPrice = promoPriceRaw ? Number(promoPriceRaw) : null;
+  const sortOrder = Number(formData.get("sortOrder"));
 
   if (name.length < 2 || name.length > 80) return null;
   if (description.length < 2 || description.length > 240) return null;
   if (!Number.isFinite(durationMinutes) || durationMinutes < 5 || durationMinutes > 480) return null;
   if (!Number.isFinite(price) || price < 0 || price > 99999) return null;
+  if (promoPrice !== null && (!Number.isFinite(promoPrice) || promoPrice < 0 || promoPrice > 99999)) return null;
+  if (!Number.isFinite(sortOrder) || sortOrder < 0 || sortOrder > 9999) return null;
 
   return {
     name,
     description,
     durationMinutes: Math.round(durationMinutes),
-    priceCents: Math.round(price * 100)
+    priceCents: Math.round(price * 100),
+    promoPriceCents: promoPrice === null ? null : Math.round(promoPrice * 100),
+    promoActive: formData.get("promoActive") === "on" && promoPrice !== null,
+    sortOrder: Math.round(sortOrder)
   };
 }
 
@@ -487,7 +597,7 @@ function parseActionId(value: FormDataEntryValue | null) {
 }
 
 function parseStatusFilter(value: string | undefined): ServiceStatusFilter {
-  if (value === "active" || value === "inactive" || value === "without-professional") return value;
+  if (value === "active" || value === "inactive" || value === "without-professional" || value === "with-promo") return value;
   return "all";
 }
 
@@ -495,12 +605,18 @@ function buildServiceWhere(status: ServiceStatusFilter, query: string) {
   const where: {
     active?: boolean;
     professionals?: { none: Record<string, never> };
+    promoActive?: boolean;
+    promoPriceCents?: { not: null };
     OR?: Array<{ name?: { contains: string; mode: "insensitive" }; description?: { contains: string; mode: "insensitive" } }>;
   } = {};
 
   if (status === "active") where.active = true;
   if (status === "inactive") where.active = false;
   if (status === "without-professional") where.professionals = { none: {} };
+  if (status === "with-promo") {
+    where.promoActive = true;
+    where.promoPriceCents = { not: null };
+  }
   if (query) {
     where.OR = [
       { name: { contains: query, mode: "insensitive" } },
@@ -509,6 +625,18 @@ function buildServiceWhere(status: ServiceStatusFilter, query: string) {
   }
 
   return where;
+}
+
+function parseProfessionalIds(formData: FormData) {
+  return Array.from(new Set(formData.getAll("professionalIds").map((value) => normalizeText(value)).filter((value) => value.length > 0 && value.length <= 128)));
+}
+
+function isPromotionActive(service: { promoActive: boolean; promoPriceCents: number | null }) {
+  return Boolean(service.promoActive && service.promoPriceCents !== null);
+}
+
+function getEffectivePriceCents(service: { priceCents: number; promoActive: boolean; promoPriceCents: number | null }) {
+  return isPromotionActive(service) ? service.promoPriceCents ?? service.priceCents : service.priceCents;
 }
 
 function buildFilterHref({ status, query }: { status: ServiceStatusFilter; query: string }) {

@@ -17,7 +17,7 @@ export default async function BookingPage() {
           select: { professionalId: true }
         }
       },
-      orderBy: { name: "asc" }
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }]
     }),
     prisma.professional.findMany({
       where: {
@@ -77,6 +77,8 @@ export default async function BookingPage() {
               description: service.description,
               durationMinutes: service.durationMinutes,
               priceCents: service.priceCents,
+              promoPriceCents: service.promoPriceCents,
+              promoActive: service.promoActive,
               professionalIds: service.professionals.map((item) => item.professionalId)
             }))}
             professionals={professionals.map((professional) => ({

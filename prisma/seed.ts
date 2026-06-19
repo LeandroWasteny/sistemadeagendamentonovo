@@ -54,7 +54,8 @@ async function main() {
       name: "Corte feminino",
       description: "Corte personalizado com finalizacao.",
       durationMinutes: 60,
-      priceCents: 9000
+      priceCents: 9000,
+      sortOrder: 1
     }
   });
 
@@ -66,7 +67,10 @@ async function main() {
       name: "Escova",
       description: "Escova modelada para eventos e rotina.",
       durationMinutes: 45,
-      priceCents: 6000
+      priceCents: 6000,
+      promoPriceCents: 5000,
+      promoActive: true,
+      sortOrder: 2
     }
   });
 

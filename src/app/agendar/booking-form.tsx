@@ -27,6 +27,8 @@ type ServiceOption = {
   description: string | null;
   durationMinutes: number;
   priceCents: number;
+  promoPriceCents: number | null;
+  promoActive: boolean;
   professionalIds: string[];
 };
 
@@ -278,7 +280,7 @@ export function BookingForm({
                     </span>
                   </span>
                   <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", active ? "bg-white/15" : "bg-blue-50 text-[var(--booking-primary)]")}>
-                    {formatCurrency(service.priceCents)}
+                    <ServicePrice service={service} active={active} />
                   </span>
                 </span>
                 {service.description && (
@@ -439,7 +441,9 @@ export function BookingForm({
       <BookingSummary
         serviceName={selectedService?.name}
         professionalName={selectedProfessional?.name}
-        priceCents={selectedService?.priceCents}
+        priceCents={selectedService ? getEffectivePriceCents(selectedService) : undefined}
+        originalPriceCents={selectedService?.priceCents}
+        promoActive={selectedService ? isPromotionActive(selectedService) : false}
         slot={slot}
       />
       <section className="mt-5">
@@ -550,15 +554,35 @@ function ProgressSteps({
   );
 }
 
+function ServicePrice({ service, active }: { service: ServiceOption; active: boolean }) {
+  const hasPromotion = isPromotionActive(service);
+  const currentPrice = getEffectivePriceCents(service);
+
+  if (!hasPromotion) return <>{formatCurrency(currentPrice)}</>;
+
+  return (
+    <span className="flex flex-col items-end leading-tight">
+      <span className={cn("text-[10px] line-through", active ? "text-white/60" : "text-slate-400")}>
+        {formatCurrency(service.priceCents)}
+      </span>
+      <span className={active ? "text-white" : "text-[var(--booking-accent)]"}>{formatCurrency(currentPrice)}</span>
+    </span>
+  );
+}
+
 function BookingSummary({
   serviceName,
   professionalName,
   priceCents,
+  originalPriceCents,
+  promoActive,
   slot
 }: {
   serviceName: string | undefined;
   professionalName: string | undefined;
   priceCents: number | undefined;
+  originalPriceCents: number | undefined;
+  promoActive: boolean;
   slot: string;
 }) {
   const slotParts = getSlotParts(slot);
@@ -576,8 +600,9 @@ function BookingSummary({
         <div className="border-t border-slate-200 pt-3">
           <SummaryRow
             label="Valor"
-            value={priceCents === undefined ? "-" : formatCurrency(priceCents)}
-            valueClassName="font-bold text-[var(--booking-text)]"
+            value={priceCents === undefined ? "-" : `${formatCurrency(priceCents)}${promoActive ? " (promocao)" : ""}`}
+            helper={promoActive && originalPriceCents !== undefined ? formatCurrency(originalPriceCents) : undefined}
+            valueClassName={promoActive ? "font-bold text-[var(--booking-accent)]" : "font-bold text-[var(--booking-text)]"}
           />
         </div>
       </div>
@@ -588,16 +613,21 @@ function BookingSummary({
 function SummaryRow({
   label,
   value,
+  helper,
   valueClassName
 }: {
   label: string;
   value: string;
+  helper?: string;
   valueClassName?: string;
 }) {
   return (
     <div className="grid grid-cols-[minmax(86px,0.7fr)_minmax(0,1.3fr)] gap-3 text-base leading-6">
       <span className="text-[var(--booking-muted)]">{label}</span>
-      <span className={cn("min-w-0 text-right font-semibold text-[var(--booking-text)]", valueClassName)}>{value}</span>
+      <span className="min-w-0 text-right">
+        {helper && <span className="mr-2 text-sm text-[var(--booking-muted)] line-through">{helper}</span>}
+        <span className={cn("font-semibold text-[var(--booking-text)]", valueClassName)}>{value}</span>
+      </span>
     </div>
   );
 }
@@ -699,6 +729,14 @@ function formatWeekday(date: Date) {
 
 function capitalizeFirst(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function isPromotionActive(service: { promoActive: boolean; promoPriceCents: number | null }) {
+  return Boolean(service.promoActive && service.promoPriceCents !== null);
+}
+
+function getEffectivePriceCents(service: { priceCents: number; promoActive: boolean; promoPriceCents: number | null }) {
+  return isPromotionActive(service) ? service.promoPriceCents ?? service.priceCents : service.priceCents;
 }
 
 function toDateValue(date: Date) {

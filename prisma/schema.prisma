@@ -38,11 +38,16 @@ model Service {
   description     String
   durationMinutes Int
   priceCents      Int
+  promoPriceCents Int?
+  promoActive     Boolean       @default(false)
+  sortOrder       Int           @default(0)
   active          Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   appointments    Appointment[]
   professionals   ProfessionalService[]
+
+  @@index([active, sortOrder])
 }
 
 model Professional {
