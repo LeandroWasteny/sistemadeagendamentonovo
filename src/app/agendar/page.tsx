@@ -88,6 +88,7 @@ export default async function BookingPage() {
               id: professional.id,
               name: professional.name,
               specialties: professional.specialties,
+              photoUrl: professional.photoUrl,
               serviceIds: professional.services.map((item) => item.serviceId)
             }))}
           />

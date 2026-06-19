@@ -8,6 +8,8 @@ const professionalSchema = z.object({
   name: z.string().trim().min(2).max(80),
   phone: z.string().min(8).max(24),
   specialties: z.string().trim().min(2).max(240),
+  photoUrl: z.string().max(3000000).nullable().optional(),
+  commissionPercent: z.number().int().min(0).max(100).optional(),
   active: z.boolean().optional(),
   serviceIds: z.array(z.string().min(1).max(128)).optional()
 });
@@ -36,6 +38,8 @@ export async function POST(request: Request) {
         name: input.data.name,
         phone: normalizePhone(input.data.phone),
         specialties: input.data.specialties,
+        photoUrl: input.data.photoUrl ?? null,
+        commissionPercent: input.data.commissionPercent ?? 0,
         active: Boolean(input.data.active)
       }
     });

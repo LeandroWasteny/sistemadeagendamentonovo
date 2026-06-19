@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import sharp from "sharp";
 import {
   AlertTriangle,
+  BadgePercent,
   BadgeCheck,
   CalendarClock,
+  Camera,
   Clock3,
+  Eye,
+  ImagePlus,
   Pencil,
   Phone,
   Plus,
@@ -22,6 +28,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type ProfessionalStatusFilter = "all" | "active" | "inactive" | "without-service" | "without-schedule";
@@ -30,6 +37,7 @@ type ProfessionalFormInput = {
   name: string;
   phone: string;
   specialties: string;
+  commissionPercent: number;
 };
 
 const statusFilters: Array<{ value: ProfessionalStatusFilter; label: string }> = [
@@ -48,6 +56,10 @@ const toneClasses: Record<Tone, string> = {
   sky: "bg-sky-50 text-[#38BDF8]"
 };
 
+const maxPhotoSizeBytes = 2 * 1024 * 1024;
+const maxPhotoPixels = 16_000_000;
+const allowedPhotoTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+
 async function createProfessional(formData: FormData) {
   "use server";
   await requireAdmin();
@@ -55,11 +67,13 @@ async function createProfessional(formData: FormData) {
   const input = parseProfessionalForm(formData);
   if (!input) return;
   const serviceIds = await getValidServiceIds(formData);
+  const photoUrl = await resolveProfessionalPhotoUrlOrRedirect(formData, null);
 
   await prisma.$transaction(async (tx) => {
     const professional = await tx.professional.create({
       data: {
         ...input,
+        photoUrl,
         active: formData.get("active") === "on"
       }
     });
@@ -98,11 +112,14 @@ async function updateProfessional(formData: FormData) {
   const input = parseProfessionalForm(formData);
   if (!id || !input) return;
   const serviceIds = await getValidServiceIds(formData);
+  const current = await prisma.professional.findUnique({ where: { id }, select: { photoUrl: true } });
+  if (!current) return;
+  const photoUrl = await resolveProfessionalPhotoUrlOrRedirect(formData, current.photoUrl);
 
   await prisma.$transaction(async (tx) => {
     await tx.professional.update({
       where: { id },
-      data: input
+      data: { ...input, photoUrl }
     });
     await tx.professionalService.deleteMany({ where: { professionalId: id } });
     if (serviceIds.length > 0) {
@@ -140,6 +157,7 @@ export default async function ProfessionalsPage({ searchParams }: { searchParams
   const params = (await searchParams) ?? {};
   const status = parseStatusFilter(getFirstValue(params.status));
   const query = normalizeText(getFirstValue(params.q) ?? "");
+  const photoError = getFirstValue(params.photoError);
   const where = buildProfessionalWhere(status, query);
   const now = new Date();
 
@@ -205,6 +223,13 @@ export default async function ProfessionalsPage({ searchParams }: { searchParams
         </div>
       </div>
 
+      {photoError && (
+        <div className="flex gap-3 rounded-[18px] border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm shadow-amber-500/10">
+          <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+          {photoError}
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <MetricCard icon={UsersRound} label="Total" value={totalProfessionals} helper="profissionais cadastradas" tone="blue" />
         <MetricCard icon={BadgeCheck} label="Ativas" value={activeTotal} helper="visiveis na agenda" tone="green" />
@@ -214,7 +239,7 @@ export default async function ProfessionalsPage({ searchParams }: { searchParams
       </div>
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(320px,400px)_minmax(0,1fr)]">
-        <form action={createProfessional} className="min-w-0 rounded-[22px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
+        <form action={createProfessional} encType="multipart/form-data" className="min-w-0 rounded-[22px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-blue-50 text-[#0F5EF7]">
               <Plus aria-hidden className="h-5 w-5" />
@@ -233,6 +258,10 @@ export default async function ProfessionalsPage({ searchParams }: { searchParams
             </Field>
             <Field label="Especialidades">
               <Textarea name="specialties" maxLength={240} placeholder="Ex.: cortes, escovas e finalizacao" required />
+            </Field>
+            <PhotoUploadField />
+            <Field label="Comissao (%)">
+              <Input name="commissionPercent" type="number" min={0} max={100} step={1} defaultValue={0} required />
             </Field>
             <ServiceChecklist services={services} selectedIds={services.filter((service) => service.active).map((service) => service.id)} />
             <label className="flex min-h-11 items-center gap-2 rounded-[14px] bg-blue-50/60 px-3 text-sm font-semibold text-[#082F8B]">
@@ -307,6 +336,8 @@ function ProfessionalCard({
     name: string;
     phone: string;
     specialties: string;
+    photoUrl: string | null;
+    commissionPercent: number;
     active: boolean;
     services: Array<{ serviceId: string; service: { name: string; active: boolean } }>;
     schedules: Array<{ id: string; dayOfWeek: number }>;
@@ -325,8 +356,12 @@ function ProfessionalCard({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-blue-50 text-[#0F5EF7]">
-                  <UserRound aria-hidden className="h-5 w-5" />
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-blue-50 text-[#0F5EF7]">
+                  {professional.photoUrl ? (
+                    <img src={professional.photoUrl} alt={professional.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <UserRound aria-hidden className="h-5 w-5" />
+                  )}
                 </span>
                 <div className="min-w-0">
                   <h3 className="break-words text-lg font-semibold text-[#082F8B]">{professional.name}</h3>
@@ -343,10 +378,11 @@ function ProfessionalCard({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
             <InfoPill icon={Scissors} label="Servicos" value={String(professional.services.length)} />
             <InfoPill icon={CalendarClock} label="Dias com horario" value={String(new Set(professional.schedules.map((item) => item.dayOfWeek)).size)} tone={professional.schedules.length > 0 ? "neutral" : "warning"} />
             <InfoPill icon={Clock3} label="Futuros" value={String(futureAppointments)} />
+            <InfoPill icon={BadgePercent} label="Comissao" value={`${professional.commissionPercent}%`} />
             <InfoPill icon={UsersRound} label="Historico" value={String(professional._count.appointments)} />
           </div>
 
@@ -373,6 +409,13 @@ function ProfessionalCard({
         <div className="rounded-[18px] border border-blue-50 bg-blue-50/35 p-3">
           <p className="mb-3 text-sm font-semibold text-[#082F8B]">Acoes da profissional</p>
           <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-1">
+            <Link
+              href={`/admin/profissionais/${professional.id}`}
+              className="inline-flex h-11 min-h-11 touch-manipulation items-center justify-center gap-2 rounded-[12px] bg-[#0F5EF7] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition hover:bg-[#0B4FD9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+            >
+              <Eye aria-hidden className="h-4 w-4" />
+              Agenda
+            </Link>
             <form action={toggleProfessional}>
               <input type="hidden" name="id" value={professional.id} />
               <input type="hidden" name="active" value={String(!professional.active)} />
@@ -411,13 +454,19 @@ function ProfessionalCard({
           <Pencil aria-hidden className="h-4 w-4" />
           Editar informacoes
         </summary>
-        <form action={updateProfessional} className="grid gap-3 border-t border-blue-50 p-4 xl:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)] xl:items-end">
+        <form action={updateProfessional} encType="multipart/form-data" className="grid gap-3 border-t border-blue-50 p-4 xl:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)] xl:items-end">
           <input type="hidden" name="id" value={professional.id} />
+          <div className="xl:col-span-3">
+            <PhotoUploadField currentPhotoUrl={professional.photoUrl} professionalName={professional.name} allowRemove />
+          </div>
           <Field label="Nome">
             <Input name="name" defaultValue={professional.name} maxLength={80} required />
           </Field>
           <Field label="WhatsApp">
             <Input name="phone" defaultValue={professional.phone} maxLength={24} inputMode="tel" required />
+          </Field>
+          <Field label="Comissao (%)">
+            <Input name="commissionPercent" type="number" min={0} max={100} step={1} defaultValue={professional.commissionPercent} required />
           </Field>
           <Field label="Especialidades">
             <Input name="specialties" defaultValue={professional.specialties} maxLength={240} required />
@@ -488,6 +537,47 @@ function ServiceChecklist({
   );
 }
 
+function PhotoUploadField({
+  currentPhotoUrl,
+  professionalName,
+  allowRemove = false
+}: {
+  currentPhotoUrl?: string | null;
+  professionalName?: string;
+  allowRemove?: boolean;
+}) {
+  return (
+    <div className="rounded-[16px] border border-blue-100 bg-blue-50/40 p-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-blue-100 bg-white text-[#0F5EF7]">
+          {currentPhotoUrl ? (
+            <img src={currentPhotoUrl} alt={professionalName ?? "Foto da profissional"} className="h-full w-full object-cover" />
+          ) : (
+            <Camera aria-hidden className="h-6 w-6" />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-[#082F8B]">Foto da profissional</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Use PNG, JPG ou WebP ate 2 MB. Recomendado: imagem quadrada, minimo 512 x 512 px.
+          </p>
+        </div>
+      </div>
+      <label className="mt-3 flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-[12px] bg-white px-3 text-sm font-semibold text-[#0F5EF7] ring-1 ring-blue-100 transition hover:bg-blue-50">
+        <ImagePlus aria-hidden className="h-4 w-4" />
+        {currentPhotoUrl ? "Trocar foto" : "Enviar foto"}
+        <input name="photoFile" type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" />
+      </label>
+      {allowRemove && currentPhotoUrl && (
+        <label className="mt-2 flex min-h-10 items-center gap-2 rounded-[12px] bg-white px-3 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
+          <input name="removePhoto" type="checkbox" value="1" />
+          Remover foto atual
+        </label>
+      )}
+    </div>
+  );
+}
+
 function InfoPill({
   icon: Icon,
   label,
@@ -540,12 +630,47 @@ function parseProfessionalForm(formData: FormData): ProfessionalFormInput | null
   const name = normalizeText(formData.get("name"));
   const phone = normalizePhone(formData.get("phone"));
   const specialties = normalizeText(formData.get("specialties"));
+  const commissionPercent = Number(formData.get("commissionPercent") ?? 0);
 
   if (name.length < 2 || name.length > 80) return null;
   if (phone.length < 8 || phone.length > 20) return null;
   if (specialties.length < 2 || specialties.length > 240) return null;
+  if (!Number.isFinite(commissionPercent) || commissionPercent < 0 || commissionPercent > 100) return null;
 
-  return { name, phone, specialties };
+  return { name, phone, specialties, commissionPercent: Math.round(commissionPercent) };
+}
+
+async function resolveProfessionalPhotoUrlOrRedirect(formData: FormData, currentPhotoUrl: string | null) {
+  try {
+    return await resolveProfessionalPhotoUrl(formData, currentPhotoUrl);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Nao foi possivel processar a foto.";
+    redirect(`/admin/profissionais?photoError=${encodeURIComponent(message)}`);
+  }
+}
+
+async function resolveProfessionalPhotoUrl(formData: FormData, currentPhotoUrl: string | null) {
+  if (formData.get("removePhoto") === "1") return null;
+
+  const file = formData.get("photoFile");
+  if (!(file instanceof File) || file.size === 0) return currentPhotoUrl;
+
+  if (!allowedPhotoTypes.has(file.type)) {
+    throw new Error("Formato invalido. Envie PNG, JPG ou WebP.");
+  }
+
+  if (file.size > maxPhotoSizeBytes) {
+    throw new Error("Foto muito grande. Envie uma imagem com ate 2 MB.");
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const image = await sharp(buffer, { limitInputPixels: maxPhotoPixels })
+    .rotate()
+    .resize(512, 512, { fit: "cover", position: "center" })
+    .webp({ quality: 86 })
+    .toBuffer();
+
+  return `data:image/webp;base64,${image.toString("base64")}`;
 }
 
 async function getValidServiceIds(formData: FormData) {
@@ -615,5 +740,6 @@ function revalidateProfessionalPaths() {
   revalidatePath("/admin");
   revalidatePath("/admin/profissionais");
   revalidatePath("/admin/horarios");
+  revalidatePath("/admin/financeiro");
   revalidatePath("/agendar");
 }

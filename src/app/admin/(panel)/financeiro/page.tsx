@@ -1,4 +1,4 @@
-import { BadgePercent, Banknote, CalendarDays, CircleDollarSign, ReceiptText, TrendingUp } from "lucide-react";
+import { BadgePercent, Banknote, CalendarDays, CircleDollarSign, HandCoins, ReceiptText, TrendingUp } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { prisma } from "@/lib/prisma";
 import { getAppointmentDiscountCents, getAppointmentFinalPriceCents } from "@/lib/services/pricing";
@@ -48,9 +48,11 @@ export default async function FinancePage({ searchParams }: { searchParams?: Sea
   const pendingRevenue = sumBy(pendingAppointments, getAppointmentFinalPriceCents);
   const lostRevenue = sumBy(cancelledAppointments, getAppointmentFinalPriceCents);
   const discounts = sumBy(validAppointments, getAppointmentDiscountCents);
+  const commissionTotal = sumBy(validAppointments, getAppointmentCommissionCents);
   const averageTicket = validAppointments.length > 0 ? Math.round(projectedRevenue / validAppointments.length) : 0;
   const couponAppointments = validAppointments.filter((appointment) => appointment.couponId !== null);
   const serviceRows = rankMoney(validAppointments, (appointment) => appointment.service.name);
+  const commissionRows = rankCommissions(validAppointments);
   const couponRows = rankMoney(couponAppointments, (appointment) => appointment.coupon?.code ?? "Cupom removido");
 
   return (
@@ -72,10 +74,11 @@ export default async function FinancePage({ searchParams }: { searchParams?: Sea
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <MetricCard icon={CircleDollarSign} label="Receita prevista" value={formatCurrency(projectedRevenue)} helper={`${validAppointments.length} agendamento(s)`} tone="blue" />
         <MetricCard icon={Banknote} label="Receita concluida" value={formatCurrency(completedRevenue)} helper={`${completedAppointments.length} concluido(s)`} tone="green" />
         <MetricCard icon={ReceiptText} label="A receber" value={formatCurrency(pendingRevenue)} helper="pendentes + confirmados" tone="amber" />
+        <MetricCard icon={HandCoins} label="Comissoes" value={formatCurrency(commissionTotal)} helper="estimativa do periodo" tone="green" />
         <MetricCard icon={BadgePercent} label="Descontos" value={formatCurrency(discounts)} helper={`${couponAppointments.length} com cupom`} tone="rose" />
         <MetricCard icon={TrendingUp} label="Ticket medio" value={formatCurrency(averageTicket)} helper={`bruto ${formatCurrency(grossRevenue)}`} tone="sky" />
       </div>
@@ -93,6 +96,20 @@ export default async function FinancePage({ searchParams }: { searchParams?: Sea
           )}
         </Panel>
 
+        <Panel title="Comissao por profissional" icon={HandCoins}>
+          {commissionRows.length > 0 ? (
+            <div className="space-y-3">
+              {commissionRows.map((row) => (
+                <CommissionRow key={row.key} row={row} max={commissionTotal} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState>Nenhuma comissao no periodo.</EmptyState>
+          )}
+        </Panel>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.85fr_1fr]">
         <Panel title="Cupons no financeiro" icon={BadgePercent}>
           {couponRows.length > 0 ? (
             <div className="space-y-3">
@@ -103,6 +120,12 @@ export default async function FinancePage({ searchParams }: { searchParams?: Sea
           ) : (
             <EmptyState>Nenhum cupom usado no periodo.</EmptyState>
           )}
+        </Panel>
+        <Panel title="Resumo do periodo" icon={ReceiptText}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SummaryBox label="Receita perdida" value={formatCurrency(lostRevenue)} helper={`${cancelledAppointments.length} cancelado(s)`} />
+            <SummaryBox label="Liquido estimado" value={formatCurrency(Math.max(0, projectedRevenue - commissionTotal))} helper="receita menos comissoes" />
+          </div>
         </Panel>
       </div>
 
@@ -191,6 +214,34 @@ function MoneyRow({ row, max }: { row: { key: string; value: number; count: numb
   );
 }
 
+function CommissionRow({ row, max }: { row: { key: string; value: number; count: number; percent: number }; max: number }) {
+  const width = max > 0 ? Math.max(8, Math.round((row.value / max) * 100)) : 0;
+  return (
+    <div>
+      <div className="mb-1 flex min-w-0 items-center justify-between gap-3 text-sm">
+        <span className="min-w-0 truncate font-semibold text-[#082F8B]">{row.key}</span>
+        <span className="shrink-0 font-semibold tabular-nums text-slate-500">{formatCurrency(row.value)}</span>
+      </div>
+      <div className="h-3 overflow-hidden rounded-full bg-[#F3F4F6]">
+        <div className="h-full rounded-full bg-[linear-gradient(90deg,#22C55E,#4ADE80)]" style={{ width: `${width}%` }} />
+      </div>
+      <p className="mt-1 text-xs font-medium text-slate-400">
+        {row.count} agendamento(s) - {row.percent}% de comissao
+      </p>
+    </div>
+  );
+}
+
+function SummaryBox({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <div className="rounded-[16px] bg-blue-50/50 p-4">
+      <p className="text-sm font-semibold text-slate-500">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-[#082F8B]">{value}</p>
+      <p className="mt-1 text-xs font-medium text-slate-500">{helper}</p>
+    </div>
+  );
+}
+
 function DateField({ label, name, defaultValue }: { label: string; name: string; defaultValue: string }) {
   return (
     <label className="space-y-1.5 text-sm font-semibold text-[#082F8B]">
@@ -223,6 +274,28 @@ function rankMoney<T>(items: T[], getKey: (item: T) => string) {
     .map(([key, row]) => ({ key, ...row }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 8);
+}
+
+function rankCommissions<T extends Parameters<typeof getAppointmentFinalPriceCents>[0] & { professional: { name: string; commissionPercent: number } }>(items: T[]) {
+  const map = new Map<string, { value: number; count: number; percent: number }>();
+  items.forEach((item) => {
+    const key = item.professional.name;
+    const current = map.get(key) ?? { value: 0, count: 0, percent: item.professional.commissionPercent };
+    current.value += getAppointmentCommissionCents(item);
+    current.count += 1;
+    current.percent = item.professional.commissionPercent;
+    map.set(key, current);
+  });
+
+  return Array.from(map.entries())
+    .map(([key, row]) => ({ key, ...row }))
+    .filter((row) => row.value > 0 || row.percent > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8);
+}
+
+function getAppointmentCommissionCents<T extends Parameters<typeof getAppointmentFinalPriceCents>[0] & { professional: { commissionPercent: number } }>(appointment: T) {
+  return Math.round((getAppointmentFinalPriceCents(appointment) * appointment.professional.commissionPercent) / 100);
 }
 
 function sumBy<T>(items: T[], getValue: (item: T) => number) {

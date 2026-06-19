@@ -42,6 +42,7 @@ type ProfessionalOption = {
   id: string;
   name: string;
   specialties: string;
+  photoUrl: string | null;
   serviceIds: string[];
 };
 
@@ -268,9 +269,20 @@ export function BookingForm({
               >
                 <span className="flex items-start justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="flex items-center gap-2 text-base font-semibold">
-                      {active && <Check aria-hidden className="h-4 w-4 shrink-0" />}
-                      <span className="truncate">{professional.name}</span>
+                    <span className="flex items-center gap-3 text-base font-semibold">
+                      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[14px]", active ? "bg-white/15" : "bg-blue-50 text-[var(--booking-primary)]")}>
+                        {professional.photoUrl ? (
+                          <img src={professional.photoUrl} alt={professional.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <UserRound aria-hidden className="h-5 w-5" />
+                        )}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2">
+                          {active && <Check aria-hidden className="h-4 w-4 shrink-0" />}
+                          <span className="truncate">{professional.name}</span>
+                        </span>
+                      </span>
                     </span>
                     <span className={cn("mt-2 line-clamp-2 block text-sm leading-5", active ? "text-white/80" : "text-slate-500")}>
                       {professional.specialties}

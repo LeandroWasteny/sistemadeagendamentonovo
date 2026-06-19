@@ -95,7 +95,8 @@ async function main() {
       id: "seed-professional-camila",
       name: "Camila Rocha",
       phone: "85988887777",
-      specialties: "Cortes, escovas e finalizacao"
+      specialties: "Cortes, escovas e finalizacao",
+      commissionPercent: 40
     }
   });
 
@@ -106,7 +107,8 @@ async function main() {
       id: "seed-professional-bianca",
       name: "Bianca Lima",
       phone: "85977776666",
-      specialties: "Escovas, finalizacao e tratamentos"
+      specialties: "Escovas, finalizacao e tratamentos",
+      commissionPercent: 35
     }
   });
 
