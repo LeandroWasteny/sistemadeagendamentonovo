@@ -46,14 +46,14 @@ export default async function BookingPage() {
       style={themeStyle}
     >
       <section className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[320px_1fr]">
-        <aside className="flex rounded-[24px] bg-[var(--booking-primary-dark)] p-3 text-white shadow-2xl shadow-blue-950/15 sm:rounded-[28px] sm:p-4 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:min-h-[640px] lg:flex-col">
-          <div className="flex items-center gap-3 rounded-[20px] bg-white/95 p-2.5 text-[var(--booking-text)] sm:rounded-[22px] sm:p-3">
+        <aside className="flex rounded-[24px] border border-blue-100 bg-white p-3 text-[var(--booking-text)] shadow-xl shadow-blue-950/10 sm:rounded-[28px] sm:p-4 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:min-h-[640px] lg:flex-col lg:border-0 lg:bg-[var(--booking-primary-dark)] lg:text-white lg:shadow-2xl lg:shadow-blue-950/15">
+          <div className="flex w-full items-center gap-3 rounded-[18px] bg-transparent p-0 text-[var(--booking-text)] lg:rounded-[22px] lg:bg-white/95 lg:p-3">
             <img
               src={profile.logoUrl}
               alt={profile.businessName}
               width={56}
               height={56}
-              className="h-12 w-12 shrink-0 rounded-[16px] object-contain sm:h-14 sm:w-14 sm:rounded-[18px]"
+              className="h-12 w-12 shrink-0 rounded-[14px] object-contain sm:h-14 sm:w-14 sm:rounded-[18px]"
             />
             <div className="min-w-0">
               <h1 className="font-display truncate text-xl font-semibold">{profile.businessName}</h1>

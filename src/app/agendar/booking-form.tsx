@@ -439,6 +439,7 @@ export function BookingForm({
       <BookingSummary
         serviceName={selectedService?.name}
         professionalName={selectedProfessional?.name}
+        priceCents={selectedService?.priceCents}
         slot={slot}
       />
       <section className="mt-5">
@@ -506,8 +507,8 @@ function ProgressSteps({
   onSelect: (step: 1 | 2 | 3) => void;
 }) {
   const steps: Array<{ id: 1 | 2 | 3; label: string }> = [
-    { id: 1, label: "Prof." },
-    { id: 2, label: "Hora" },
+    { id: 1, label: "Serviço" },
+    { id: 2, label: "Horário" },
     { id: 3, label: "Dados" }
   ];
 
@@ -552,21 +553,51 @@ function ProgressSteps({
 function BookingSummary({
   serviceName,
   professionalName,
+  priceCents,
   slot
 }: {
   serviceName: string | undefined;
   professionalName: string | undefined;
+  priceCents: number | undefined;
   slot: string;
 }) {
+  const slotParts = getSlotParts(slot);
+
   return (
-    <div className="mt-5 rounded-[20px] border border-blue-100 bg-blue-50/60 p-3 text-sm text-[var(--booking-text)]">
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--booking-primary)]">Resumo</p>
-      <p className="mt-1 font-semibold">
-        {professionalName ?? "Profissional"} {serviceName ? `- ${serviceName}` : ""}
-      </p>
-      <p className="mt-1 text-slate-600">
-        {slot ? `Horario: ${formatSlotLabel(slot)}` : "Escolha um horario para continuar."}
-      </p>
+    <div className="mt-5 overflow-hidden rounded-[16px] border border-slate-200 bg-white text-sm text-[var(--booking-text)] shadow-sm">
+      <div className="bg-slate-200 px-4 py-3 text-xs font-bold uppercase tracking-[0.08em] text-slate-900">
+        Resumo do agendamento
+      </div>
+      <div className="space-y-2 px-4 py-4">
+        <SummaryRow label="Serviço" value={serviceName ?? "-"} />
+        <SummaryRow label="Profissional" value={professionalName ?? "-"} />
+        <SummaryRow label="Data" value={slotParts.dateLabel} />
+        <SummaryRow label="Horário" value={slotParts.timeLabel} />
+        <div className="border-t border-slate-200 pt-3">
+          <SummaryRow
+            label="Valor"
+            value={priceCents === undefined ? "-" : formatCurrency(priceCents)}
+            valueClassName="font-bold text-emerald-600"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  valueClassName
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(86px,0.7fr)_minmax(0,1.3fr)] gap-3 text-base leading-6">
+      <span className="text-slate-700">{label}</span>
+      <span className={cn("min-w-0 text-right font-semibold text-slate-950", valueClassName)}>{value}</span>
     </div>
   );
 }
@@ -641,13 +672,33 @@ function formatDateLabel(value: string) {
   });
 }
 
-function formatSlotLabel(value: string) {
+function getSlotParts(value: string) {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   if (match) {
     const [, year, month, day, hour, minute] = match;
-    return `${day}/${month}/${year}, ${hour}:${minute}`;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    const dateNumeric = `${day}/${month}/${year}`;
+    const weekday = formatWeekday(date);
+    return {
+      dateLabel: `${weekday}, ${dateNumeric}`,
+      timeLabel: `${hour}:${minute}`
+    };
   }
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  const date = new Date(value);
+  const weekday = formatWeekday(date);
+  const dateNumeric = date.toLocaleDateString("pt-BR");
+  return {
+    dateLabel: `${weekday}, ${dateNumeric}`,
+    timeLabel: date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  };
+}
+
+function formatWeekday(date: Date) {
+  return capitalizeFirst(date.toLocaleDateString("pt-BR", { weekday: "long" }).replace("-feira", ""));
+}
+
+function capitalizeFirst(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function toDateValue(date: Date) {
