@@ -436,13 +436,15 @@ function MetricCard({
   tone: Tone;
 }) {
   return (
-    <div className="rounded-[20px] border border-white bg-white/95 p-5 shadow-lg shadow-blue-950/5">
-      <span className={`flex h-11 w-11 items-center justify-center rounded-[14px] ${toneClasses[tone]}`}>
+    <div className="flex min-w-0 items-center gap-4 rounded-[20px] border border-white bg-white/95 p-4 shadow-lg shadow-blue-950/5">
+      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[15px] ${toneClasses[tone]}`}>
         <Icon aria-hidden className="h-5 w-5" />
       </span>
-      <p className="mt-4 text-3xl font-semibold tabular-nums text-[#082F8B]">{value}</p>
-      <p className="text-sm font-semibold text-[#082F8B]">{label}</p>
-      <p className="mt-1 text-xs text-slate-500">{helper}</p>
+      <div className="min-w-0">
+        <p className="text-3xl font-semibold leading-none tabular-nums text-[#082F8B]">{value}</p>
+        <p className="mt-1 truncate text-sm font-semibold text-[#082F8B]">{label}</p>
+        <p className="mt-0.5 truncate text-xs text-slate-500">{helper}</p>
+      </div>
     </div>
   );
 }

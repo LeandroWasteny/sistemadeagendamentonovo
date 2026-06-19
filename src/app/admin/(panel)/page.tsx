@@ -260,14 +260,16 @@ function MetricCard({
   return (
     <Link
       href={href}
-      className="group rounded-[20px] border border-white bg-white/95 p-5 shadow-lg shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
+      className="group flex min-w-0 items-center gap-4 rounded-[20px] border border-white bg-white/95 p-4 shadow-lg shadow-blue-950/5 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2"
     >
-      <span className={`flex h-11 w-11 items-center justify-center rounded-[14px] ${toneClasses[tone]}`}>
+      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[15px] ${toneClasses[tone]}`}>
         <Icon aria-hidden className="h-5 w-5" />
       </span>
-      <p className="mt-4 text-3xl font-semibold tabular-nums text-[#082F8B]">{value}</p>
-      <p className="text-sm font-semibold text-[#082F8B]">{label}</p>
-      <p className="mt-1 text-xs text-slate-500">{helper}</p>
+      <span className="min-w-0">
+        <span className="block text-3xl font-semibold leading-none tabular-nums text-[#082F8B]">{value}</span>
+        <span className="mt-1 block truncate text-sm font-semibold text-[#082F8B]">{label}</span>
+        <span className="mt-0.5 block truncate text-xs text-slate-500">{helper}</span>
+      </span>
     </Link>
   );
 }

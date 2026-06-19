@@ -5,6 +5,8 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Loader2,
   MessageCircle,
@@ -46,6 +48,8 @@ type DayOption = {
   day: string;
   month: string;
   label: string;
+  isPast: boolean;
+  isToday: boolean;
 };
 
 export function BookingForm({
@@ -57,22 +61,25 @@ export function BookingForm({
   services: ServiceOption[];
   professionals: ProfessionalOption[];
 }) {
-  const days = useMemo(() => buildDayOptions(30), []);
-  const firstDay = days[0]?.value ?? "";
+  const todayValue = useMemo(() => toDateValue(new Date()), []);
+  const [monthCursor, setMonthCursor] = useState(() => startOfMonthDate(new Date()));
+  const monthDays = useMemo(() => buildMonthOptions(monthCursor, todayValue), [monthCursor, todayValue]);
+  const monthOffset = useMemo(() => getMonthStartOffset(monthCursor), [monthCursor]);
 
   const [serviceId, setServiceId] = useState("");
   const [professionalId, setProfessionalId] = useState("");
-  const [date, setDate] = useState(firstDay);
+  const [date, setDate] = useState(todayValue);
   const [slot, setSlot] = useState("");
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [lookupCode, setLookupCode] = useState("");
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedProfessional = professionals.find((professional) => professional.id === professionalId);
-  const selectedDay = days.find((day) => day.value === date);
+  const selectedDay = monthDays.find((day) => day.value === date);
 
   const compatibleProfessionals = useMemo(() => {
     if (!selectedService) return [];
@@ -146,9 +153,12 @@ export function BookingForm({
   const hasCompatibleProfessionals = Boolean(selectedService && compatibleProfessionals.length > 0);
   const canSubmit = Boolean(serviceId && professionalId && slot);
   const selectedDateLabel = selectedDay?.label ?? formatDateLabel(date);
+  const canMoveToSchedule = Boolean(serviceId && professionalId);
+  const monthLabel = formatMonthLabel(monthCursor);
+  const isCurrentMonth = isSameYearMonth(monthCursor, new Date());
 
   return (
-    <form action={handleSubmit} className="rounded-[28px] bg-[var(--booking-surface)] p-4 shadow-2xl shadow-blue-950/10 md:p-6">
+    <form action={handleSubmit} className="rounded-[28px] bg-[var(--booking-surface)] p-3 shadow-2xl shadow-blue-950/10 sm:p-4 md:p-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[var(--booking-primary)]">{profile.businessName}</p>
@@ -168,10 +178,16 @@ export function BookingForm({
         </a>
       </div>
 
-      <ProgressSteps active={slot ? 3 : professionalId ? 2 : serviceId ? 1 : 0} />
+      <ProgressSteps
+        active={currentStep}
+        maxStep={canSubmit ? 3 : canMoveToSchedule ? 2 : 1}
+        onSelect={(step) => setCurrentStep(step)}
+      />
 
+      {currentStep === 1 && (
+      <>
       <section className="mt-5">
-        <SectionTitle icon={CalendarDays} label="Servico" />
+        <SectionTitle icon={CalendarDays} label="1. Servico" />
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {services.length === 0 && (
             <p className="rounded-[16px] bg-slate-100 px-4 py-4 text-sm font-medium text-slate-500">
@@ -258,50 +274,97 @@ export function BookingForm({
             );
           })}
         </div>
+        <Button
+          type="button"
+          className="mt-5 h-12 w-full rounded-[16px] bg-[var(--booking-primary)] text-base hover:bg-[var(--booking-primary-dark)]"
+          disabled={!canMoveToSchedule}
+          onClick={() => setCurrentStep(2)}
+        >
+          Continuar para horarios
+        </Button>
       </section>
+      </>
+      )}
 
-      <section className="mt-6">
-        <SectionTitle icon={Clock3} label="Data e horario" />
-        <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
-          {days.map((dayOption) => {
-            const active = dayOption.value === date;
-            return (
-              <button
-                key={dayOption.value}
-                type="button"
-                className={cn(
-                  "rounded-[18px] border px-2 py-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]",
-                  active
-                    ? "border-[var(--booking-primary)] bg-[var(--booking-primary)] text-white shadow-lg shadow-blue-500/20"
-                    : "border-blue-100 bg-white text-[var(--booking-text)] hover:border-[var(--booking-primary)] hover:bg-blue-50"
-                )}
-                aria-label={dayOption.label}
-                onClick={() => setDate(dayOption.value)}
-                aria-pressed={active}
-              >
-                <span className={cn("block text-[11px] font-semibold uppercase", active ? "text-white/75" : "text-slate-500")}>
-                  {dayOption.weekday}
-                </span>
-                <span className="mt-1 block text-xl font-semibold">{dayOption.day}</span>
-                <span className={cn("block text-[11px] font-semibold uppercase", active ? "text-white/75" : "text-slate-400")}>
-                  {dayOption.month}
-                </span>
-              </button>
-            );
-          })}
+      {currentStep === 2 && (
+      <section className="mt-5">
+        <SectionTitle icon={Clock3} label="2. Horarios" />
+        <div className="-mx-3 mt-4 rounded-[22px] border border-blue-100 bg-white p-1 sm:mx-0 sm:p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-blue-100 text-[var(--booking-primary)] transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={isCurrentMonth}
+              onClick={() => {
+                const nextMonth = addMonths(monthCursor, -1);
+                setMonthCursor(nextMonth);
+                setDate(getFirstSelectableDate(nextMonth, todayValue));
+                setSlot("");
+              }}
+              aria-label="Mes anterior"
+            >
+              <ChevronLeft aria-hidden className="h-5 w-5" />
+            </button>
+            <p className="text-center text-sm font-semibold capitalize text-[var(--booking-text)]">{monthLabel}</p>
+            <button
+              type="button"
+              className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-blue-100 text-[var(--booking-primary)] transition hover:bg-blue-50"
+              onClick={() => {
+                const nextMonth = addMonths(monthCursor, 1);
+                setMonthCursor(nextMonth);
+                setDate(getFirstSelectableDate(nextMonth, todayValue));
+                setSlot("");
+              }}
+              aria-label="Proximo mes"
+            >
+              <ChevronRight aria-hidden className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="overflow-x-auto pb-1">
+            <div className="grid min-w-[320px] grid-cols-7 gap-0.5 text-center text-[11px] font-semibold uppercase text-slate-400 sm:gap-1.5">
+              {["D", "S", "T", "Q", "Q", "S", "S"].map((weekday, index) => (
+                <span key={`${weekday}-${index}`}>{weekday}</span>
+              ))}
+            </div>
+            <div className="mt-2 grid min-w-[320px] grid-cols-7 gap-0.5 sm:gap-1.5">
+              {Array.from({ length: monthOffset }).map((_, index) => (
+                <span key={`blank-${index}`} aria-hidden className="h-11" />
+              ))}
+              {monthDays.map((dayOption) => {
+                const active = dayOption.value === date;
+                return (
+                  <button
+                    key={dayOption.value}
+                    type="button"
+                    className={cn(
+                      "min-h-12 rounded-[14px] border px-1 py-2 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]",
+                      dayOption.isPast
+                        ? "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300"
+                        : active
+                        ? "border-[var(--booking-primary)] bg-[var(--booking-primary)] text-white shadow-lg shadow-blue-500/20"
+                        : "border-blue-100 bg-white text-[var(--booking-text)] hover:border-[var(--booking-primary)] hover:bg-blue-50"
+                    )}
+                    aria-label={dayOption.label}
+                    disabled={dayOption.isPast}
+                    onClick={() => {
+                      setDate(dayOption.value);
+                      setSlot("");
+                    }}
+                    aria-pressed={active}
+                  >
+                    <span className={cn("block text-[11px] font-semibold uppercase", active ? "text-white/75" : "text-slate-500")}>
+                      {dayOption.weekday}
+                    </span>
+                    <span className="mt-1 block text-xl font-semibold">{dayOption.day}</span>
+                    <span className={cn("block text-[10px] font-semibold uppercase", active ? "text-white/75" : dayOption.isToday ? "text-[var(--booking-primary)]" : "text-slate-400")}>
+                      {dayOption.isToday ? "Hoje" : dayOption.month}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
-        <label className="mt-3 block space-y-1.5 text-sm font-semibold text-[var(--booking-text)]">
-          Outra data
-          <Input
-            type="date"
-            value={date}
-            min={firstDay}
-            onChange={(event) => {
-              setDate(event.target.value);
-              setSlot("");
-            }}
-          />
-        </label>
 
         <div className="mt-3 rounded-[20px] bg-slate-50 p-3">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -338,10 +401,26 @@ export function BookingForm({
             })}
           </div>
         </div>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <Button type="button" variant="secondary" className="h-12 rounded-[16px]" onClick={() => setCurrentStep(1)}>
+            Voltar
+          </Button>
+          <Button
+            type="button"
+            className="h-12 rounded-[16px] bg-[var(--booking-primary)] text-base hover:bg-[var(--booking-primary-dark)]"
+            disabled={!slot}
+            onClick={() => setCurrentStep(3)}
+          >
+            Continuar para meus dados
+          </Button>
+        </div>
       </section>
+      )}
 
-      <section className="mt-6">
-        <SectionTitle icon={MessageCircle} label="Seus dados" />
+      {currentStep === 3 && (
+      <>
+      <section className="mt-5">
+        <SectionTitle icon={MessageCircle} label="3. Seus dados" />
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <label className="space-y-1.5 text-sm font-semibold text-[var(--booking-text)]">
             Nome
@@ -374,10 +453,15 @@ export function BookingForm({
         </p>
       </div>
 
+      <Button type="button" variant="secondary" className="mt-4 h-12 w-full rounded-[16px]" onClick={() => setCurrentStep(2)}>
+        Voltar para horarios
+      </Button>
       <Button className="mt-4 h-12 w-full gap-2 rounded-[16px] bg-[var(--booking-primary)] text-base hover:bg-[var(--booking-primary-dark)]" disabled={saving || !canSubmit}>
         {saving ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : <Send aria-hidden className="h-4 w-4" />}
         Confirmar
       </Button>
+      </>
+      )}
 
       {message && (
         <p
@@ -399,26 +483,53 @@ export function BookingForm({
   );
 }
 
-function ProgressSteps({ active }: { active: number }) {
-  const steps = ["Servico", "Hora", "Dados"];
+function ProgressSteps({
+  active,
+  maxStep,
+  onSelect
+}: {
+  active: 1 | 2 | 3;
+  maxStep: 1 | 2 | 3;
+  onSelect: (step: 1 | 2 | 3) => void;
+}) {
+  const steps: Array<{ id: 1 | 2 | 3; label: string }> = [
+    { id: 1, label: "Servico" },
+    { id: 2, label: "Hora" },
+    { id: 3, label: "Dados" }
+  ];
 
   return (
     <div className="grid grid-cols-3 gap-2">
-      {steps.map((step, index) => {
-        const done = index < active;
+      {steps.map((step) => {
+        const selected = step.id === active;
+        const done = step.id < active;
+        const disabled = step.id > maxStep;
         return (
-          <div
-            key={step}
+          <button
+            key={step.id}
+            type="button"
+            disabled={disabled}
+            onClick={() => onSelect(step.id)}
             className={cn(
-              "flex min-w-0 items-center gap-2 rounded-[14px] px-2 py-2 text-sm font-semibold sm:px-3",
-              done ? "bg-[var(--booking-accent-soft)] text-[var(--booking-accent)]" : "bg-slate-100 text-slate-500"
+              "flex min-h-11 min-w-0 touch-manipulation items-center gap-2 rounded-[14px] px-2 py-2 text-left text-sm font-semibold transition sm:px-3",
+              selected
+                ? "bg-[var(--booking-primary)] text-white shadow-lg shadow-blue-500/15"
+                : done
+                ? "bg-[var(--booking-accent-soft)] text-[var(--booking-accent)]"
+                : "bg-slate-100 text-slate-500",
+              disabled && "cursor-not-allowed opacity-60"
             )}
           >
-            <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-xs", done ? "bg-[var(--booking-accent)] text-white" : "bg-white")}>
-              {index + 1}
+            <span
+              className={cn(
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs",
+                selected ? "bg-white text-[var(--booking-primary)]" : done ? "bg-[var(--booking-accent)] text-white" : "bg-white"
+              )}
+            >
+              {step.id}
             </span>
-            <span className="truncate">{step}</span>
-          </div>
+            <span className="truncate">{step.label}</span>
+          </button>
         );
       })}
     </div>
@@ -436,25 +547,52 @@ function SectionTitle({ icon: Icon, label }: { icon: LucideIcon; label: string }
   );
 }
 
-function buildDayOptions(length: number): DayOption[] {
-  return Array.from({ length }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() + index);
+function buildMonthOptions(month: Date, todayValue: string): DayOption[] {
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const date = new Date(month.getFullYear(), month.getMonth(), index + 1);
     const value = toDateValue(date);
     const weekday = date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
-    const month = date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+    const monthText = date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
     return {
       value,
       weekday,
       day: String(date.getDate()).padStart(2, "0"),
-      month,
+      month: monthText,
       label: date.toLocaleDateString("pt-BR", {
         weekday: "long",
         day: "2-digit",
         month: "long"
-      })
+      }),
+      isPast: value < todayValue,
+      isToday: value === todayValue
     };
   });
+}
+
+function startOfMonthDate(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function getMonthStartOffset(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+}
+
+function getFirstSelectableDate(month: Date, todayValue: string) {
+  const firstDay = toDateValue(startOfMonthDate(month));
+  return firstDay < todayValue ? todayValue : firstDay;
+}
+
+function isSameYearMonth(date: Date, compare: Date) {
+  return date.getFullYear() === compare.getFullYear() && date.getMonth() === compare.getMonth();
+}
+
+function formatMonthLabel(date: Date) {
+  return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 }
 
 function formatDateLabel(value: string) {
