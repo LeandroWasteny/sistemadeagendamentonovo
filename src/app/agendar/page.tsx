@@ -46,7 +46,7 @@ export default async function BookingPage() {
       style={themeStyle}
     >
       <section className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[320px_1fr]">
-        <aside className="rounded-[24px] bg-[var(--booking-primary-dark)] p-3 text-white shadow-2xl shadow-blue-950/15 sm:rounded-[28px] sm:p-4 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:min-h-[640px]">
+        <aside className="flex rounded-[24px] bg-[var(--booking-primary-dark)] p-3 text-white shadow-2xl shadow-blue-950/15 sm:rounded-[28px] sm:p-4 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:min-h-[640px] lg:flex-col">
           <div className="flex items-center gap-3 rounded-[20px] bg-white/95 p-2.5 text-[var(--booking-text)] sm:rounded-[22px] sm:p-3">
             <img
               src={profile.logoUrl}
@@ -61,32 +61,11 @@ export default async function BookingPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:grid-cols-1">
-            <a
-              href={profile.whatsappUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-11 items-center gap-3 rounded-[16px] bg-white/10 px-3 text-sm font-semibold transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              <MessageCircle aria-hidden className="h-4 w-4" />
-              WhatsApp
-            </a>
-            <a
-              href={profile.instagramUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-11 items-center gap-3 rounded-[16px] bg-white/10 px-3 text-sm font-semibold transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              <Camera aria-hidden className="h-4 w-4" />
-              Instagram
-            </a>
-            <p className="hidden items-start gap-3 rounded-[16px] bg-white/10 px-3 py-3 text-sm font-medium leading-5 text-white/85 sm:flex">
+          <div className="mt-4 hidden space-y-2 lg:block">
+            <p className="flex items-start gap-3 rounded-[16px] bg-white/10 px-3 py-3 text-sm font-medium leading-5 text-white/85">
               <MapPin aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
               {profile.address}
             </p>
-          </div>
-
-          <div className="mt-4 hidden space-y-2 sm:block">
             {profile.promotions.map((promotion) => (
               <div key={promotion.title} className="rounded-[18px] border border-white/10 bg-white/10 p-3">
                 <p className="text-sm font-semibold">{promotion.title}</p>
@@ -94,26 +73,64 @@ export default async function BookingPage() {
               </div>
             ))}
           </div>
+          <ContactLinks
+            whatsappUrl={profile.whatsappUrl}
+            instagramUrl={profile.instagramUrl}
+            className="mt-auto hidden gap-2 lg:grid"
+          />
         </aside>
 
-        <BookingForm
-          profile={profile}
-          services={services.map((service) => ({
-            id: service.id,
-            name: service.name,
-            description: service.description,
-            durationMinutes: service.durationMinutes,
-            priceCents: service.priceCents,
-            professionalIds: service.professionals.map((item) => item.professionalId)
-          }))}
-          professionals={professionals.map((professional) => ({
-            id: professional.id,
-            name: professional.name,
-            specialties: professional.specialties,
-            serviceIds: professional.services.map((item) => item.serviceId)
-          }))}
-        />
+        <div className="space-y-4">
+          <BookingForm
+            profile={profile}
+            services={services.map((service) => ({
+              id: service.id,
+              name: service.name,
+              description: service.description,
+              durationMinutes: service.durationMinutes,
+              priceCents: service.priceCents,
+              professionalIds: service.professionals.map((item) => item.professionalId)
+            }))}
+            professionals={professionals.map((professional) => ({
+              id: professional.id,
+              name: professional.name,
+              specialties: professional.specialties,
+              serviceIds: professional.services.map((item) => item.serviceId)
+            }))}
+          />
+          <ContactLinks
+            whatsappUrl={profile.whatsappUrl}
+            instagramUrl={profile.instagramUrl}
+            className="grid grid-cols-2 gap-2 lg:hidden"
+          />
+        </div>
       </section>
     </main>
+  );
+}
+
+function ContactLinks({
+  whatsappUrl,
+  instagramUrl,
+  className
+}: {
+  whatsappUrl: string;
+  instagramUrl: string;
+  className: string;
+}) {
+  const linkClass =
+    "flex h-11 items-center justify-center gap-2 rounded-[16px] bg-[var(--booking-primary-dark)] px-3 text-sm font-semibold text-white shadow-lg shadow-blue-950/10 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
+
+  return (
+    <div className={className}>
+      <a href={whatsappUrl} target="_blank" rel="noreferrer" className={linkClass}>
+        <MessageCircle aria-hidden className="h-4 w-4" />
+        WhatsApp
+      </a>
+      <a href={instagramUrl} target="_blank" rel="noreferrer" className={linkClass}>
+        <Camera aria-hidden className="h-4 w-4" />
+        Instagram
+      </a>
+    </div>
   );
 }

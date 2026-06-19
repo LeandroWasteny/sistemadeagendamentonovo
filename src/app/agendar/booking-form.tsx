@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -76,26 +76,28 @@ export function BookingForm({
   const [message, setMessage] = useState("");
   const [lookupCode, setLookupCode] = useState("");
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const servicesRef = useRef<HTMLDivElement>(null);
+  const slotsRef = useRef<HTMLDivElement>(null);
 
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedProfessional = professionals.find((professional) => professional.id === professionalId);
   const selectedDay = monthDays.find((day) => day.value === date);
 
-  const compatibleProfessionals = useMemo(() => {
-    if (!selectedService) return [];
-    return professionals.filter((professional) => selectedService.professionalIds.includes(professional.id));
-  }, [professionals, selectedService]);
+  const compatibleServices = useMemo(() => {
+    if (!selectedProfessional) return [];
+    return services.filter((service) => selectedProfessional.serviceIds.includes(service.id));
+  }, [selectedProfessional, services]);
 
   useEffect(() => {
-    if (!serviceId) {
-      setProfessionalId("");
+    if (!professionalId) {
+      setServiceId("");
       return;
     }
-    const compatible = professionals.filter((professional) => professional.serviceIds.includes(serviceId));
-    if (professionalId && !compatible.some((professional) => professional.id === professionalId)) {
-      setProfessionalId("");
+    const compatible = services.filter((service) => service.professionalIds.includes(professionalId));
+    if (serviceId && !compatible.some((service) => service.id === serviceId)) {
+      setServiceId("");
     }
-  }, [professionals, professionalId, serviceId]);
+  }, [professionalId, serviceId, services]);
 
   useEffect(() => {
     if (!serviceId || !professionalId || !date) {
@@ -150,7 +152,7 @@ export function BookingForm({
     }
   }
 
-  const hasCompatibleProfessionals = Boolean(selectedService && compatibleProfessionals.length > 0);
+  const hasCompatibleServices = Boolean(selectedProfessional && compatibleServices.length > 0);
   const canSubmit = Boolean(serviceId && professionalId && slot);
   const selectedDateLabel = selectedDay?.label ?? formatDateLabel(date);
   const canMoveToSchedule = Boolean(serviceId && professionalId);
@@ -187,89 +189,103 @@ export function BookingForm({
       {currentStep === 1 && (
       <>
       <section className="mt-5">
-        <SectionTitle icon={CalendarDays} label="1. Servico" />
+        <SectionTitle icon={UserRound} label="1. Profissional" />
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {services.length === 0 && (
+          {professionals.length === 0 && (
             <p className="rounded-[16px] bg-slate-100 px-4 py-4 text-sm font-medium text-slate-500">
-              Nenhum servico disponivel.
+              Nenhuma profissional disponivel.
             </p>
           )}
-          {services.map((service) => {
-            const active = service.id === serviceId;
-            return (
-              <button
-                key={service.id}
-                type="button"
-                className={cn(
-                  "min-h-28 rounded-[20px] border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]",
-                  active
-                    ? "border-[var(--booking-primary)] bg-[var(--booking-primary)] text-white shadow-lg shadow-blue-500/20"
-                    : "border-blue-100 bg-white text-[var(--booking-text)] hover:border-[var(--booking-primary)] hover:bg-blue-50"
-                )}
-                onClick={() => {
-                  setServiceId(service.id);
-                  setProfessionalId("");
-                  setSlot("");
-                }}
-                aria-pressed={active}
-              >
-                <span className="flex items-start justify-between gap-3">
-                  <span>
-                    <span className="block text-base font-semibold">{service.name}</span>
-                    <span className={cn("mt-1 block text-sm", active ? "text-white/80" : "text-slate-500")}>
-                      {service.durationMinutes} min
-                    </span>
-                  </span>
-                  <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", active ? "bg-white/15" : "bg-blue-50 text-[var(--booking-primary)]")}>
-                    {formatCurrency(service.priceCents)}
-                  </span>
-                </span>
-                {service.description && (
-                  <span className={cn("mt-3 line-clamp-2 block text-sm leading-5", active ? "text-white/80" : "text-slate-500")}>
-                    {service.description}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="mt-6">
-        <SectionTitle icon={UserRound} label="Profissional" />
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {!selectedService && (
-            <p className="rounded-[16px] bg-slate-100 px-4 py-3 text-sm font-medium text-slate-500">
-              Escolha um servico para ver as profissionais.
-            </p>
-          )}
-          {selectedService && !hasCompatibleProfessionals && (
-            <p className="rounded-[16px] bg-slate-100 px-4 py-3 text-sm font-medium text-slate-500">
-              Nenhuma profissional atende este servico.
-            </p>
-          )}
-          {compatibleProfessionals.map((professional) => {
+          {professionals.map((professional) => {
             const active = professional.id === professionalId;
             return (
               <button
                 key={professional.id}
                 type="button"
                 className={cn(
-                  "min-w-44 rounded-[18px] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]",
+                  "min-h-24 rounded-[20px] border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]",
+                  active
+                    ? "border-[var(--booking-primary)] bg-[var(--booking-primary)] text-white shadow-lg shadow-blue-500/20"
+                    : "border-blue-100 bg-white text-[var(--booking-text)] hover:border-[var(--booking-primary)] hover:bg-blue-50"
+                )}
+                onClick={() => {
+                  setProfessionalId(professional.id);
+                  setServiceId("");
+                  setSlot("");
+                  requestAnimationFrame(() => servicesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                }}
+                aria-pressed={active}
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-base font-semibold">
+                      {active && <Check aria-hidden className="h-4 w-4 shrink-0" />}
+                      <span className="truncate">{professional.name}</span>
+                    </span>
+                    <span className={cn("mt-2 line-clamp-2 block text-sm leading-5", active ? "text-white/80" : "text-slate-500")}>
+                      {professional.specialties}
+                    </span>
+                  </span>
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", active ? "bg-white/15" : "bg-blue-50 text-[var(--booking-primary)]")}>
+                    {professional.serviceIds.length} serv.
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mt-6" ref={servicesRef}>
+        <SectionTitle icon={CalendarDays} label="Servico" />
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {!selectedProfessional && (
+            <p className="rounded-[16px] bg-slate-100 px-4 py-3 text-sm font-medium text-slate-500">
+              Escolha uma profissional para ver os servicos.
+            </p>
+          )}
+          {selectedProfessional && !hasCompatibleServices && (
+            <p className="rounded-[16px] bg-slate-100 px-4 py-3 text-sm font-medium text-slate-500">
+              Nenhum servico vinculado a esta profissional.
+            </p>
+          )}
+          {compatibleServices.map((service) => {
+            const active = service.id === serviceId;
+            return (
+              <button
+                key={service.id}
+                type="button"
+                className={cn(
+                  "min-h-24 rounded-[18px] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]",
                   active
                     ? "border-[var(--booking-primary)] bg-[var(--booking-primary)] text-white"
                     : "border-blue-100 bg-white text-[var(--booking-text)] hover:border-[var(--booking-primary)] hover:bg-blue-50"
                 )}
-                onClick={() => setProfessionalId(professional.id)}
+                onClick={() => {
+                  setServiceId(service.id);
+                  setSlot("");
+                }}
                 aria-pressed={active}
               >
-                <span className="flex items-center gap-2 font-semibold">
-                  {active && <Check aria-hidden className="h-4 w-4" />}
-                  {professional.name}
+                <span className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 font-semibold">
+                      {active && <Check aria-hidden className="h-4 w-4 shrink-0" />}
+                      <span className="truncate">{service.name}</span>
+                    </span>
+                    <span className={cn("mt-1 block text-sm", active ? "text-white/75" : "text-slate-500")}>
+                      {service.durationMinutes} min
+                    </span>
+                  </span>
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", active ? "bg-white/15" : "bg-blue-50 text-[var(--booking-primary)]")}>
+                    {formatCurrency(service.priceCents)}
+                  </span>
                 </span>
-                <span className={cn("mt-1 block truncate text-xs", active ? "text-white/75" : "text-slate-500")}>
-                  {professional.specialties}
-                </span>
+                {service.description && (
+                  <span className={cn("mt-2 line-clamp-2 block text-sm leading-5", active ? "text-white/80" : "text-slate-500")}>
+                    {service.description}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -349,6 +365,7 @@ export function BookingForm({
                     onClick={() => {
                       setDate(dayOption.value);
                       setSlot("");
+                      requestAnimationFrame(() => slotsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
                     }}
                     aria-pressed={active}
                   >
@@ -366,7 +383,7 @@ export function BookingForm({
           </div>
         </div>
 
-        <div className="mt-3 rounded-[20px] bg-slate-50 p-3">
+        <div className="mt-3 rounded-[20px] bg-slate-50 p-3" ref={slotsRef}>
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-[var(--booking-text)]">
               {selectedDateLabel}
@@ -419,6 +436,11 @@ export function BookingForm({
 
       {currentStep === 3 && (
       <>
+      <BookingSummary
+        serviceName={selectedService?.name}
+        professionalName={selectedProfessional?.name}
+        slot={slot}
+      />
       <section className="mt-5">
         <SectionTitle icon={MessageCircle} label="3. Seus dados" />
         <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -443,15 +465,6 @@ export function BookingForm({
           <Textarea name="notes" autoComplete="off" placeholder="Opcional" className="min-h-20" />
         </label>
       </section>
-
-      <div className="mt-5 rounded-[20px] border border-blue-100 bg-blue-50/60 p-3 text-sm text-[var(--booking-text)]">
-        <p className="font-semibold">
-          {selectedService?.name ?? "Servico"} {selectedProfessional ? `com ${selectedProfessional.name}` : ""}
-        </p>
-        <p className="mt-1 text-slate-600">
-          {slot ? `Horario selecionado: ${new Date(slot).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}` : "Escolha um horario para continuar."}
-        </p>
-      </div>
 
       <Button type="button" variant="secondary" className="mt-4 h-12 w-full rounded-[16px]" onClick={() => setCurrentStep(2)}>
         Voltar para horarios
@@ -493,7 +506,7 @@ function ProgressSteps({
   onSelect: (step: 1 | 2 | 3) => void;
 }) {
   const steps: Array<{ id: 1 | 2 | 3; label: string }> = [
-    { id: 1, label: "Servico" },
+    { id: 1, label: "Prof." },
     { id: 2, label: "Hora" },
     { id: 3, label: "Dados" }
   ];
@@ -532,6 +545,28 @@ function ProgressSteps({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function BookingSummary({
+  serviceName,
+  professionalName,
+  slot
+}: {
+  serviceName: string | undefined;
+  professionalName: string | undefined;
+  slot: string;
+}) {
+  return (
+    <div className="mt-5 rounded-[20px] border border-blue-100 bg-blue-50/60 p-3 text-sm text-[var(--booking-text)]">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--booking-primary)]">Resumo</p>
+      <p className="mt-1 font-semibold">
+        {professionalName ?? "Profissional"} {serviceName ? `- ${serviceName}` : ""}
+      </p>
+      <p className="mt-1 text-slate-600">
+        {slot ? `Horario: ${formatSlotLabel(slot)}` : "Escolha um horario para continuar."}
+      </p>
     </div>
   );
 }
@@ -604,6 +639,15 @@ function formatDateLabel(value: string) {
     day: "2-digit",
     month: "long"
   });
+}
+
+function formatSlotLabel(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (match) {
+    const [, year, month, day, hour, minute] = match;
+    return `${day}/${month}/${year}, ${hour}:${minute}`;
+  }
+  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 function toDateValue(date: Date) {
