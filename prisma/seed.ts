@@ -68,8 +68,8 @@ async function main() {
       description: "Escova modelada para eventos e rotina.",
       durationMinutes: 45,
       priceCents: 6000,
-      promoPriceCents: 5000,
       promoActive: true,
+      promoDiscountPercent: 15,
       sortOrder: 2
     }
   });

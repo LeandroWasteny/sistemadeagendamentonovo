@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  BadgePercent,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { PublicBookingProfile } from "@/lib/booking/public-profile";
+import { getEffectivePriceCents, getPromotionPercent, isPromotionActive } from "@/lib/services/pricing";
 import { cn, formatCurrency } from "@/lib/utils";
 
 type ServiceOption = {
@@ -29,6 +31,7 @@ type ServiceOption = {
   priceCents: number;
   promoPriceCents: number | null;
   promoActive: boolean;
+  promoDiscountPercent: number;
   professionalIds: string[];
 };
 
@@ -239,7 +242,7 @@ export function BookingForm({
       </section>
 
       <section className="mt-6" ref={servicesRef}>
-        <SectionTitle icon={CalendarDays} label="Servico" />
+        <SectionTitle icon={CalendarDays} label="Serviço" />
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {!selectedProfessional && (
             <p className="rounded-[16px] bg-slate-100 px-4 py-3 text-sm font-medium text-slate-500">
@@ -258,9 +261,11 @@ export function BookingForm({
                 key={service.id}
                 type="button"
                 className={cn(
-                  "min-h-24 rounded-[18px] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]",
+                  "relative min-h-24 overflow-hidden rounded-[18px] border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--booking-primary)]",
                   active
                     ? "border-[var(--booking-primary)] bg-[var(--booking-primary)] text-white"
+                    : isPromotionActive(service)
+                    ? "border-emerald-200 bg-emerald-50/60 text-[var(--booking-text)] hover:border-[var(--booking-accent)] hover:bg-[var(--booking-accent-soft)]"
                     : "border-blue-100 bg-white text-[var(--booking-text)] hover:border-[var(--booking-primary)] hover:bg-blue-50"
                 )}
                 onClick={() => {
@@ -288,6 +293,20 @@ export function BookingForm({
                     {service.description}
                   </span>
                 )}
+                {isPromotionActive(service) && (
+                  <span
+                    className={cn(
+                      "mt-3 flex items-center justify-between gap-2 rounded-[14px] px-3 py-2 text-xs font-bold",
+                      active ? "bg-white/15 text-white" : "bg-white text-[var(--booking-accent)] shadow-sm shadow-emerald-950/5"
+                    )}
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <BadgePercent aria-hidden className="h-4 w-4" />
+                      Promoção ativa
+                    </span>
+                    <span>{getPromotionPercent(service)}% OFF</span>
+                  </span>
+                )}
               </button>
             );
           })}
@@ -306,7 +325,7 @@ export function BookingForm({
 
       {currentStep === 2 && (
       <section className="mt-5">
-        <SectionTitle icon={Clock3} label="2. Horarios" />
+        <SectionTitle icon={Clock3} label="2. Horários" />
         <div className="-mx-3 mt-4 rounded-[22px] border border-blue-100 bg-white p-1 sm:mx-0 sm:p-3">
           <div className="mb-3 flex items-center justify-between gap-3">
             <button
@@ -444,6 +463,7 @@ export function BookingForm({
         priceCents={selectedService ? getEffectivePriceCents(selectedService) : undefined}
         originalPriceCents={selectedService?.priceCents}
         promoActive={selectedService ? isPromotionActive(selectedService) : false}
+        promoDiscountPercent={selectedService ? getPromotionPercent(selectedService) : 0}
         slot={slot}
       />
       <section className="mt-5">
@@ -561,7 +581,10 @@ function ServicePrice({ service, active }: { service: ServiceOption; active: boo
   if (!hasPromotion) return <>{formatCurrency(currentPrice)}</>;
 
   return (
-    <span className="flex flex-col items-end leading-tight">
+    <span className="flex flex-col items-end gap-0.5 leading-tight">
+      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", active ? "bg-white/15 text-white" : "bg-[var(--booking-accent)] text-white")}>
+        -{getPromotionPercent(service)}%
+      </span>
       <span className={cn("text-[10px] line-through", active ? "text-white/60" : "text-slate-400")}>
         {formatCurrency(service.priceCents)}
       </span>
@@ -576,6 +599,7 @@ function BookingSummary({
   priceCents,
   originalPriceCents,
   promoActive,
+  promoDiscountPercent,
   slot
 }: {
   serviceName: string | undefined;
@@ -583,6 +607,7 @@ function BookingSummary({
   priceCents: number | undefined;
   originalPriceCents: number | undefined;
   promoActive: boolean;
+  promoDiscountPercent: number;
   slot: string;
 }) {
   const slotParts = getSlotParts(slot);
@@ -600,8 +625,9 @@ function BookingSummary({
         <div className="border-t border-slate-200 pt-3">
           <SummaryRow
             label="Valor"
-            value={priceCents === undefined ? "-" : `${formatCurrency(priceCents)}${promoActive ? " (promocao)" : ""}`}
+            value={priceCents === undefined ? "-" : formatCurrency(priceCents)}
             helper={promoActive && originalPriceCents !== undefined ? formatCurrency(originalPriceCents) : undefined}
+            badge={promoActive ? `${promoDiscountPercent}% OFF` : undefined}
             valueClassName={promoActive ? "font-bold text-[var(--booking-accent)]" : "font-bold text-[var(--booking-text)]"}
           />
         </div>
@@ -614,11 +640,13 @@ function SummaryRow({
   label,
   value,
   helper,
+  badge,
   valueClassName
 }: {
   label: string;
   value: string;
   helper?: string;
+  badge?: string;
   valueClassName?: string;
 }) {
   return (
@@ -626,6 +654,7 @@ function SummaryRow({
       <span className="text-[var(--booking-muted)]">{label}</span>
       <span className="min-w-0 text-right">
         {helper && <span className="mr-2 text-sm text-[var(--booking-muted)] line-through">{helper}</span>}
+        {badge && <span className="mr-2 rounded-full bg-[var(--booking-accent-soft)] px-2 py-1 text-xs font-bold text-[var(--booking-accent)]">{badge}</span>}
         <span className={cn("font-semibold text-[var(--booking-text)]", valueClassName)}>{value}</span>
       </span>
     </div>
@@ -729,14 +758,6 @@ function formatWeekday(date: Date) {
 
 function capitalizeFirst(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function isPromotionActive(service: { promoActive: boolean; promoPriceCents: number | null }) {
-  return Boolean(service.promoActive && service.promoPriceCents !== null);
-}
-
-function getEffectivePriceCents(service: { priceCents: number; promoActive: boolean; promoPriceCents: number | null }) {
-  return isPromotionActive(service) ? service.promoPriceCents ?? service.priceCents : service.priceCents;
 }
 
 function toDateValue(date: Date) {

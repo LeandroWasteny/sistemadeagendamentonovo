@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { getEffectivePriceCents, getPromotionPercent, isPromotionActive } from "@/lib/services/pricing";
 import { formatCurrency } from "@/lib/utils";
 import { ServiceActionButton } from "./service-action-button";
 
@@ -33,6 +34,7 @@ type ServiceFormInput = {
   priceCents: number;
   promoPriceCents: number | null;
   promoActive: boolean;
+  promoDiscountPercent: number;
   sortOrder: number;
 };
 type Tone = "blue" | "green" | "amber" | "rose" | "sky";
@@ -161,7 +163,7 @@ export default async function ServicesPage({ searchParams }: { searchParams?: Se
     prisma.service.count({ where: { active: true } }),
     prisma.service.count({ where: { active: false } }),
     prisma.service.count({ where: { professionals: { none: {} } } }),
-    prisma.service.count({ where: { promoActive: true, promoPriceCents: { not: null } } })
+    prisma.service.count({ where: { promoActive: true, promoDiscountPercent: { gt: 0 } } })
   ]);
   const averagePrice =
     totalServices > 0
@@ -197,7 +199,7 @@ export default async function ServicesPage({ searchParams }: { searchParams?: Se
         <MetricCard icon={BriefcaseBusiness} label="Total" value={totalServices} helper="servicos cadastrados" tone="blue" />
         <MetricCard icon={BadgeCheck} label="Ativos" value={activeTotal} helper="visiveis para agenda" tone="green" />
         <MetricCard icon={AlertTriangle} label="Sem profissional" value={withoutProfessionalTotal} helper="precisam de vinculo" tone="amber" />
-        <MetricCard icon={BadgePercent} label="Promocoes" value={promoTotal} helper="com preco promocional" tone="rose" />
+        <MetricCard icon={BadgePercent} label="Promocoes" value={promoTotal} helper="com desconto ativo" tone="rose" />
         <MetricCard icon={Clock3} label="Preco medio" value={formatCurrency(averagePrice)} helper="nos filtros atuais" tone="sky" />
       </div>
 
@@ -231,13 +233,13 @@ export default async function ServicesPage({ searchParams }: { searchParams?: Se
               <Field label="Ordem">
                 <Input name="sortOrder" type="number" min="0" max="9999" step="1" placeholder="1" defaultValue={0} required />
               </Field>
-              <Field label="Preco promocional">
-                <Input name="promoPrice" type="number" min="0" max="99999" step="0.01" placeholder="Opcional" />
+              <Field label="Desconto (%)">
+                <Input name="promoDiscountPercent" type="number" min="0" max="95" step="1" placeholder="15" />
               </Field>
             </div>
             <label className="flex min-h-11 items-center gap-2 rounded-[14px] bg-rose-50 px-3 text-sm font-semibold text-rose-700">
               <input name="promoActive" type="checkbox" />
-              Destacar como promocao
+              Destacar como promocao quando tiver desconto
             </label>
             <ProfessionalChecklist professionals={professionals} selectedIds={[]} />
             <label className="flex min-h-11 items-center gap-2 rounded-[14px] bg-blue-50/60 px-3 text-sm font-semibold text-[#082F8B]">
@@ -311,6 +313,7 @@ function ServiceCard({
     priceCents: number;
     promoPriceCents: number | null;
     promoActive: boolean;
+    promoDiscountPercent: number;
     sortOrder: number;
     active: boolean;
     professionals: Array<{ professionalId: string; professional: { name: string; active: boolean } }>;
@@ -320,6 +323,7 @@ function ServiceCard({
 }) {
   const canDelete = service._count.appointments === 0;
   const hasPromotion = isPromotionActive(service);
+  const promotionPercent = getPromotionPercent(service);
   const selectedProfessionalIds = service.professionals.map((item) => item.professionalId);
 
   return (
@@ -349,7 +353,7 @@ function ServiceCard({
               <p className={hasPromotion ? "text-lg font-semibold text-[#22C55E]" : "text-lg font-semibold text-[#0F5EF7]"}>
                 {formatCurrency(getEffectivePriceCents(service))}
               </p>
-              {hasPromotion && <p className="text-xs font-semibold text-[#22C55E]">promocao</p>}
+              {hasPromotion && <p className="text-xs font-semibold text-[#22C55E]">-{promotionPercent}% promocao</p>}
             </div>
           </div>
 
@@ -439,12 +443,12 @@ function ServiceCard({
           <Field label="Ordem">
             <Input name="sortOrder" type="number" min="0" max="9999" step="1" defaultValue={service.sortOrder} required />
           </Field>
-          <Field label="Preco promocional">
-            <Input name="promoPrice" type="number" min="0" max="99999" step="0.01" defaultValue={service.promoPriceCents ? service.promoPriceCents / 100 : ""} />
+          <Field label="Desconto (%)">
+            <Input name="promoDiscountPercent" type="number" min="0" max="95" step="1" defaultValue={service.promoDiscountPercent} />
           </Field>
           <label className="flex min-h-11 items-center gap-2 rounded-[14px] bg-rose-50 px-3 text-sm font-semibold text-rose-700 xl:col-span-2">
             <input name="promoActive" type="checkbox" defaultChecked={service.promoActive} />
-            Destacar como promocao quando tiver preco promocional
+            Destacar como promocao quando tiver desconto
           </label>
           <div className="xl:col-span-4">
             <ProfessionalChecklist professionals={professionals} selectedIds={selectedProfessionalIds} />
@@ -569,24 +573,26 @@ function parseServiceForm(formData: FormData): ServiceFormInput | null {
   const description = normalizeText(formData.get("description"));
   const durationMinutes = Number(formData.get("durationMinutes"));
   const price = Number(formData.get("price"));
-  const promoPriceRaw = normalizeText(formData.get("promoPrice"));
-  const promoPrice = promoPriceRaw ? Number(promoPriceRaw) : null;
+  const promoDiscountPercent = Number(formData.get("promoDiscountPercent") ?? 0);
   const sortOrder = Number(formData.get("sortOrder"));
 
   if (name.length < 2 || name.length > 80) return null;
   if (description.length < 2 || description.length > 240) return null;
   if (!Number.isFinite(durationMinutes) || durationMinutes < 5 || durationMinutes > 480) return null;
   if (!Number.isFinite(price) || price < 0 || price > 99999) return null;
-  if (promoPrice !== null && (!Number.isFinite(promoPrice) || promoPrice < 0 || promoPrice > 99999)) return null;
+  if (!Number.isFinite(promoDiscountPercent) || promoDiscountPercent < 0 || promoDiscountPercent > 95) return null;
   if (!Number.isFinite(sortOrder) || sortOrder < 0 || sortOrder > 9999) return null;
+
+  const roundedDiscount = Math.round(promoDiscountPercent);
 
   return {
     name,
     description,
     durationMinutes: Math.round(durationMinutes),
     priceCents: Math.round(price * 100),
-    promoPriceCents: promoPrice === null ? null : Math.round(promoPrice * 100),
-    promoActive: formData.get("promoActive") === "on" && promoPrice !== null,
+    promoPriceCents: null,
+    promoActive: formData.get("promoActive") === "on" && roundedDiscount > 0,
+    promoDiscountPercent: roundedDiscount,
     sortOrder: Math.round(sortOrder)
   };
 }
@@ -606,7 +612,7 @@ function buildServiceWhere(status: ServiceStatusFilter, query: string) {
     active?: boolean;
     professionals?: { none: Record<string, never> };
     promoActive?: boolean;
-    promoPriceCents?: { not: null };
+    promoDiscountPercent?: { gt: number };
     OR?: Array<{ name?: { contains: string; mode: "insensitive" }; description?: { contains: string; mode: "insensitive" } }>;
   } = {};
 
@@ -615,7 +621,7 @@ function buildServiceWhere(status: ServiceStatusFilter, query: string) {
   if (status === "without-professional") where.professionals = { none: {} };
   if (status === "with-promo") {
     where.promoActive = true;
-    where.promoPriceCents = { not: null };
+    where.promoDiscountPercent = { gt: 0 };
   }
   if (query) {
     where.OR = [
@@ -629,14 +635,6 @@ function buildServiceWhere(status: ServiceStatusFilter, query: string) {
 
 function parseProfessionalIds(formData: FormData) {
   return Array.from(new Set(formData.getAll("professionalIds").map((value) => normalizeText(value)).filter((value) => value.length > 0 && value.length <= 128)));
-}
-
-function isPromotionActive(service: { promoActive: boolean; promoPriceCents: number | null }) {
-  return Boolean(service.promoActive && service.promoPriceCents !== null);
-}
-
-function getEffectivePriceCents(service: { priceCents: number; promoActive: boolean; promoPriceCents: number | null }) {
-  return isPromotionActive(service) ? service.promoPriceCents ?? service.priceCents : service.priceCents;
 }
 
 function buildFilterHref({ status, query }: { status: ServiceStatusFilter; query: string }) {
