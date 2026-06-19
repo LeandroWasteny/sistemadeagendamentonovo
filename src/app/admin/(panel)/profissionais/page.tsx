@@ -378,9 +378,9 @@ function ProfessionalCard({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
             <InfoPill icon={Scissors} label="Servicos" value={String(professional.services.length)} />
-            <InfoPill icon={CalendarClock} label="Dias com horario" value={String(new Set(professional.schedules.map((item) => item.dayOfWeek)).size)} tone={professional.schedules.length > 0 ? "neutral" : "warning"} />
+            <InfoPill icon={CalendarClock} label="Dias" value={String(new Set(professional.schedules.map((item) => item.dayOfWeek)).size)} tone={professional.schedules.length > 0 ? "neutral" : "warning"} />
             <InfoPill icon={Clock3} label="Futuros" value={String(futureAppointments)} />
             <InfoPill icon={BadgePercent} label="Comissao" value={`${professional.commissionPercent}%`} />
             <InfoPill icon={UsersRound} label="Historico" value={String(professional._count.appointments)} />
@@ -591,11 +591,11 @@ function InfoPill({
 }) {
   const toneClass = tone === "warning" ? "bg-amber-50 text-amber-700" : "bg-[#F3F4F6] text-[#082F8B]";
   return (
-    <div className={`flex min-w-0 items-center gap-2 rounded-[14px] px-3 py-2 ${toneClass}`}>
+    <div className={`grid min-h-16 min-w-0 grid-cols-[18px_minmax(0,1fr)] items-center gap-2 rounded-[14px] px-3 py-3 ${toneClass}`}>
       <Icon aria-hidden className="h-4 w-4 shrink-0" />
       <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase opacity-70">{label}</p>
-        <p className="truncate text-sm font-semibold">{value}</p>
+        <p className="truncate text-[11px] font-bold uppercase leading-4 opacity-70" title={label}>{label}</p>
+        <p className="truncate text-base font-semibold leading-5">{value}</p>
       </div>
     </div>
   );

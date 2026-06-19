@@ -126,7 +126,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
       )}
       <aside
         className={cn(
-          "relative z-40 border-b text-[var(--sidebar-text)] backdrop-blur [background:var(--sidebar-bg)] [box-shadow:0_16px_40px_var(--shadow-soft)] md:sticky md:top-0 md:flex md:h-screen md:shrink-0 md:flex-col md:border-b-0 md:border-r md:transition-[width] md:duration-200",
+          "relative z-40 border-b text-[var(--sidebar-text)] backdrop-blur [background:var(--sidebar-bg)] [box-shadow:0_16px_40px_var(--shadow-soft)] md:sticky md:top-0 md:flex md:h-dvh md:max-h-dvh md:shrink-0 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r md:transition-[width] md:duration-200",
           "border-[var(--sidebar-border)]",
           collapsed ? "md:w-[76px]" : "md:w-[260px]"
         )}
@@ -247,12 +247,12 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
       <nav
         id={navId}
         className={cn(
-          "px-3 pb-3 md:flex-1 md:overflow-y-auto",
+          "px-3 pb-3",
           mobileOpen ? "block" : "hidden md:block"
         )}
         aria-label="Navegacao administrativa"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           {navGroups.map((group) => (
             <div key={group.label}>
               {!collapsed && (
@@ -295,7 +295,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
 
       <form
         action={logoutAction}
-        className={cn("px-3 pb-4", mobileOpen ? "block" : "hidden md:block")}
+        className={cn("px-3 pb-4 md:mt-auto", mobileOpen ? "block" : "hidden md:block")}
       >
         <button
           className={cn(
