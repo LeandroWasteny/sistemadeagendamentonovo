@@ -126,7 +126,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
       )}
       <aside
         className={cn(
-          "relative z-40 border-b text-[var(--sidebar-text)] backdrop-blur [background:var(--sidebar-bg)] [box-shadow:0_16px_40px_var(--shadow-soft)] md:sticky md:top-0 md:flex md:h-dvh md:max-h-dvh md:self-start md:shrink-0 md:flex-col md:overflow-hidden md:border-b-0 md:border-r md:transition-[width] md:duration-200",
+          "relative z-40 border-b text-[var(--sidebar-text)] backdrop-blur [background:var(--sidebar-bg)] [box-shadow:0_16px_40px_var(--shadow-soft)] md:fixed md:inset-y-0 md:left-0 md:flex md:h-dvh md:max-h-dvh md:shrink-0 md:flex-col md:overflow-hidden md:border-b-0 md:border-r md:transition-[width] md:duration-200",
           "border-[var(--sidebar-border)]",
           collapsed ? "md:w-[76px]" : "md:w-[260px]"
         )}
@@ -310,6 +310,13 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
         </button>
       </form>
     </aside>
+    <div
+      aria-hidden="true"
+      className={cn(
+        "hidden md:block md:shrink-0 md:transition-[width] md:duration-200",
+        collapsed ? "md:w-[76px]" : "md:w-[260px]"
+      )}
+    />
     </>
   );
 }
