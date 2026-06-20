@@ -374,7 +374,7 @@ function ServiceCard({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(142px,1fr))] gap-2">
             <InfoPill icon={Clock3} label="Duracao" value={`${service.durationMinutes} min`} />
             <InfoPill icon={ListOrdered} label="Ordem" value={String(service.sortOrder)} />
             <InfoPill icon={UsersRound} label="Profissionais" value={String(service.professionals.length)} />
@@ -523,11 +523,11 @@ function InfoPill({
   value: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-[14px] bg-[#F3F4F6] px-3 py-2 text-[#082F8B]">
+    <div className="grid min-h-[72px] min-w-0 grid-cols-[18px_minmax(0,1fr)] items-center gap-2 rounded-[14px] bg-[#F3F4F6] px-3 py-3 text-[#082F8B]">
       <Icon aria-hidden className="h-4 w-4 shrink-0" />
       <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase opacity-70">{label}</p>
-        <p className="truncate text-sm font-semibold">{value}</p>
+        <p className="text-[11px] font-semibold uppercase leading-4 opacity-70">{label}</p>
+        <p className="text-base font-semibold leading-5">{value}</p>
       </div>
     </div>
   );
