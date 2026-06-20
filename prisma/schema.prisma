@@ -69,6 +69,7 @@ model Professional {
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
   schedules         ProfessionalSchedule[]
+  scheduleBlocks    ScheduleBlock[]
   appointments      Appointment[]
   services          ProfessionalService[]
 }
@@ -98,6 +99,22 @@ model ProfessionalSchedule {
   updatedAt       DateTime     @updatedAt
 
   @@unique([professionalId, dayOfWeek, startTime, endTime])
+}
+
+model ScheduleBlock {
+  id             String        @id @default(cuid())
+  professionalId String?
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  date           DateTime
+  startTime      String?
+  endTime        String?
+  reason         String
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([date, active])
+  @@index([professionalId, date, active])
 }
 
 model Appointment {

@@ -30,6 +30,14 @@ type ScheduleFormInput = {
   intervalMinutes: number;
   active: boolean;
 };
+type ScheduleBlockFormInput = {
+  professionalId: string | null;
+  date: Date;
+  startTime: string | null;
+  endTime: string | null;
+  reason: string;
+  active: boolean;
+};
 
 const days = [
   { value: 0, label: "Domingo", short: "Dom" },
@@ -129,6 +137,43 @@ async function deleteSchedule(formData: FormData) {
   revalidateSchedulePaths();
 }
 
+async function createScheduleBlock(formData: FormData) {
+  "use server";
+  await requireAdmin();
+
+  const input = parseScheduleBlockForm(formData);
+  if (!input) return;
+
+  await prisma.scheduleBlock.create({ data: input });
+  revalidateSchedulePaths();
+}
+
+async function toggleScheduleBlock(formData: FormData) {
+  "use server";
+  await requireAdmin();
+
+  const id = parseActionId(formData.get("id"));
+  if (!id) return;
+
+  await prisma.scheduleBlock.update({
+    where: { id },
+    data: { active: formData.get("active") === "true" }
+  });
+
+  revalidateSchedulePaths();
+}
+
+async function deleteScheduleBlock(formData: FormData) {
+  "use server";
+  await requireAdmin();
+
+  const id = parseActionId(formData.get("id"));
+  if (!id) return;
+
+  await prisma.scheduleBlock.delete({ where: { id } });
+  revalidateSchedulePaths();
+}
+
 export default async function SchedulesPage({ searchParams }: { searchParams?: SearchParams }) {
   await requireAdmin();
 
@@ -138,7 +183,7 @@ export default async function SchedulesPage({ searchParams }: { searchParams?: S
   const selectedStatus = parseStatusFilter(getFirstValue(params.status));
   const where = buildScheduleWhere(selectedProfessionalId, selectedDay, selectedStatus);
 
-  const [professionals, schedules, totalSchedules, activeSchedules, inactiveSchedules, withoutScheduleTotal, activeProfessionalTotal] =
+  const [professionals, schedules, scheduleBlocks, totalSchedules, activeSchedules, inactiveSchedules, withoutScheduleTotal, activeProfessionalTotal, activeScheduleBlocks] =
     await Promise.all([
       prisma.professional.findMany({
         include: {
@@ -156,11 +201,16 @@ export default async function SchedulesPage({ searchParams }: { searchParams?: S
         },
         orderBy: [{ professional: { name: "asc" } }, { dayOfWeek: "asc" }, { startTime: "asc" }]
       }),
+      prisma.scheduleBlock.findMany({
+        include: { professional: { select: { id: true, name: true } } },
+        orderBy: [{ active: "desc" }, { date: "asc" }, { startTime: "asc" }, { createdAt: "desc" }]
+      }),
       prisma.professionalSchedule.count(),
       prisma.professionalSchedule.count({ where: { active: true } }),
       prisma.professionalSchedule.count({ where: { active: false } }),
       prisma.professional.count({ where: { active: true, schedules: { none: { active: true } } } }),
-      prisma.professional.count({ where: { active: true } })
+      prisma.professional.count({ where: { active: true } }),
+      prisma.scheduleBlock.count({ where: { active: true } })
     ]);
   const activeProfessionals = professionals.filter((professional) => professional.active);
 
@@ -187,15 +237,17 @@ export default async function SchedulesPage({ searchParams }: { searchParams?: S
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <MetricCard icon={CalendarClock} label="Janelas" value={totalSchedules} helper="horarios cadastrados" tone="blue" />
         <MetricCard icon={BadgeCheck} label="Ativas" value={activeSchedules} helper="aparecem na agenda" tone="green" />
         <MetricCard icon={Clock3} label="Inativas" value={inactiveSchedules} helper="pausadas" tone="sky" />
         <MetricCard icon={AlertTriangle} label="Sem horario" value={withoutScheduleTotal} helper="profissionais ativas" tone="amber" />
         <MetricCard icon={UserRound} label="Profissionais" value={activeProfessionalTotal} helper="ativas no sistema" tone="rose" />
+        <MetricCard icon={AlertTriangle} label="Bloqueios" value={activeScheduleBlocks} helper="feriados e folgas" tone="amber" />
       </div>
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(320px,410px)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
         <form action={createSchedules} className="min-w-0 rounded-[22px] border border-white bg-white/95 p-5 shadow-xl shadow-blue-950/5">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-blue-50 text-[#0F5EF7]">
@@ -259,6 +311,58 @@ export default async function SchedulesPage({ searchParams }: { searchParams?: S
           </div>
         </form>
 
+          <form action={createScheduleBlock} className="min-w-0 rounded-[22px] border border-amber-100 bg-white/95 p-5 shadow-xl shadow-blue-950/5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-amber-50 text-amber-700">
+                <AlertTriangle aria-hidden className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-amber-700">Excecao da agenda</p>
+                <h2 className="font-display text-xl font-semibold text-[#082F8B]">Bloquear feriado ou folga</h2>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <Field label="Aplicar para">
+                <Select name="professionalId" defaultValue="">
+                  <option value="">Todos os profissionais</option>
+                  {activeProfessionals.map((professional) => (
+                    <option key={professional.id} value={professional.id}>
+                      {professional.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Data">
+                <Input name="date" type="date" required />
+              </Field>
+              <Field label="Motivo">
+                <Input name="reason" maxLength={80} placeholder="Ex.: Feriado, folga, curso ou manutencao" required />
+              </Field>
+              <div className="rounded-[16px] border border-amber-100 bg-amber-50/50 p-3">
+                <p className="text-sm font-semibold text-amber-800">Bloqueio parcial</p>
+                <p className="mt-1 text-xs leading-5 text-amber-700">Para bloquear o dia inteiro, deixe os horarios em branco.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Field label="Inicio">
+                    <Input name="startTime" type="time" />
+                  </Field>
+                  <Field label="Fim">
+                    <Input name="endTime" type="time" />
+                  </Field>
+                </div>
+              </div>
+              <label className="flex min-h-11 items-center gap-2 rounded-[14px] bg-blue-50/60 px-3 text-sm font-semibold text-[#082F8B]">
+                <input name="active" type="checkbox" defaultChecked />
+                Bloqueio ativo
+              </label>
+              <Button className="w-full gap-2" variant="secondary">
+                <Plus aria-hidden className="h-4 w-4" />
+                Salvar bloqueio
+              </Button>
+            </div>
+          </form>
+        </div>
+
         <div className="min-w-0 space-y-4">
           <div className="rounded-[22px] border border-white bg-white/95 p-4 shadow-xl shadow-blue-950/5">
             <form className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px_140px_auto]" action="/admin/horarios">
@@ -292,6 +396,8 @@ export default async function SchedulesPage({ searchParams }: { searchParams?: S
             </form>
           </div>
 
+          <ScheduleBlocksPanel scheduleBlocks={scheduleBlocks} />
+
           <CoveragePanel professionals={activeProfessionals} selectedProfessionalId={selectedProfessionalId} />
 
           <div className="overflow-hidden rounded-[22px] border border-white bg-white/95 shadow-xl shadow-blue-950/5">
@@ -315,6 +421,92 @@ export default async function SchedulesPage({ searchParams }: { searchParams?: S
         </div>
       </div>
     </section>
+  );
+}
+
+function ScheduleBlocksPanel({
+  scheduleBlocks
+}: {
+  scheduleBlocks: Array<{
+    id: string;
+    date: Date;
+    startTime: string | null;
+    endTime: string | null;
+    reason: string;
+    active: boolean;
+    professional: { id: string; name: string } | null;
+  }>;
+}) {
+  return (
+    <div className="overflow-hidden rounded-[22px] border border-amber-100 bg-white/95 shadow-xl shadow-blue-950/5">
+      <div className="border-b border-amber-100 bg-amber-50/50 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-semibold text-[#082F8B]">Bloqueios e feriados</h2>
+            <p className="mt-1 text-sm text-slate-600">Datas bloqueadas nao aparecem para o cliente na tela de agendamento.</p>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-amber-700">
+            {scheduleBlocks.length} registro(s)
+          </span>
+        </div>
+      </div>
+      <div className="divide-y divide-amber-100">
+        {scheduleBlocks.map((block) => (
+          <article key={block.id} className="grid gap-4 p-5 2xl:grid-cols-[minmax(0,1fr)_220px] 2xl:items-start">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="break-words text-lg font-semibold text-[#082F8B]">{block.reason}</h3>
+                <span className={block.active ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700" : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"}>
+                  {block.active ? "Ativo" : "Inativo"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm font-semibold text-slate-600">
+                {formatBlockDate(block.date)} - {block.professional?.name ?? "Todos os profissionais"}
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <InfoPill icon={CalendarClock} label="Periodo" value={formatBlockPeriod(block)} />
+                <InfoPill icon={UserRound} label="Alcance" value={block.professional?.name ?? "Geral"} />
+              </div>
+            </div>
+
+            <div className="rounded-[18px] border border-amber-100 bg-amber-50/35 p-3">
+              <p className="mb-3 text-sm font-semibold text-[#082F8B]">Acoes</p>
+              <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-1">
+                <form action={toggleScheduleBlock}>
+                  <input type="hidden" name="id" value={block.id} />
+                  <input type="hidden" name="active" value={String(!block.active)} />
+                  <Button className="w-full gap-2" variant="secondary">
+                    <BadgeCheck aria-hidden className="h-4 w-4" />
+                    {block.active ? "Desativar" : "Ativar"}
+                  </Button>
+                </form>
+                <details className="rounded-[12px] bg-white">
+                  <summary className="flex h-11 min-h-11 cursor-pointer list-none touch-manipulation items-center justify-center gap-2 rounded-[12px] bg-rose-500 px-4 text-sm font-semibold text-white shadow-sm shadow-rose-500/20 transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F5EF7] focus-visible:ring-offset-2">
+                    <Trash2 aria-hidden className="h-4 w-4" />
+                    Excluir
+                  </summary>
+                  <form action={deleteScheduleBlock} className="mt-2 rounded-[12px] border border-rose-100 bg-rose-50 p-2">
+                    <input type="hidden" name="id" value={block.id} />
+                    <p className="mb-2 text-xs font-medium text-rose-700">Remove este bloqueio da agenda publica.</p>
+                    <Button className="w-full gap-2" variant="danger">
+                      <Trash2 aria-hidden className="h-4 w-4" />
+                      Confirmar
+                    </Button>
+                  </form>
+                </details>
+              </div>
+            </div>
+          </article>
+        ))}
+        {scheduleBlocks.length === 0 && (
+          <div className="p-5">
+            <p className="rounded-[16px] bg-[#F3F4F6] px-4 py-3 text-sm font-medium text-slate-500">
+              Nenhum feriado ou bloqueio cadastrado.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -576,6 +768,34 @@ function parseScheduleForm(formData: FormData): ScheduleFormInput | null {
   };
 }
 
+function parseScheduleBlockForm(formData: FormData): ScheduleBlockFormInput | null {
+  const professionalId = normalizeText(formData.get("professionalId"));
+  const date = normalizeText(formData.get("date"));
+  const startTime = normalizeText(formData.get("startTime"));
+  const endTime = normalizeText(formData.get("endTime"));
+  const reason = normalizeText(formData.get("reason"));
+
+  if (professionalId.length > 128) return null;
+  if (!isValidDate(date)) return null;
+  if (reason.length < 2 || reason.length > 80) return null;
+
+  const hasStart = startTime.length > 0;
+  const hasEnd = endTime.length > 0;
+  if (hasStart !== hasEnd) return null;
+  if (hasStart && (!isValidTime(startTime) || !isValidTime(endTime) || timeToMinutes(startTime) >= timeToMinutes(endTime))) {
+    return null;
+  }
+
+  return {
+    professionalId: professionalId || null,
+    date: new Date(`${date}T00:00:00.000Z`),
+    startTime: hasStart ? startTime : null,
+    endTime: hasEnd ? endTime : null,
+    reason,
+    active: formData.get("active") === "on"
+  };
+}
+
 function parseSelectedDays(formData: FormData) {
   return Array.from(new Set(formData.getAll("dayOfWeek").map(parseDay).filter((day): day is number => day !== null)));
 }
@@ -632,6 +852,10 @@ function isValidTime(value: string) {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
+function isValidDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
+}
+
 function timeToMinutes(value: string) {
   const [hour, minute] = value.split(":").map(Number);
   return hour * 60 + minute;
@@ -649,6 +873,21 @@ function getWindowDuration(startTime: string, endTime: string) {
 function getApproximateSlots(startTime: string, endTime: string, intervalMinutes: number) {
   const minutes = Math.max(0, timeToMinutes(endTime) - timeToMinutes(startTime));
   return Math.floor(minutes / intervalMinutes);
+}
+
+function formatBlockDate(date: Date) {
+  const dateKey = date.toISOString().slice(0, 10);
+  return new Date(`${dateKey}T12:00:00`).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
+function formatBlockPeriod(block: { startTime: string | null; endTime: string | null }) {
+  if (!block.startTime || !block.endTime) return "Dia inteiro";
+  return `${block.startTime} ate ${block.endTime}`;
 }
 
 function getDayLabel(value: number) {
