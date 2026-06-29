@@ -21,7 +21,8 @@ export async function GET(request: Request) {
   });
   if (!service) return NextResponse.json({ error: "Servico nao encontrado." }, { status: 404 });
 
-  const [schedules, appointments] = await Promise.all([
+  const blockDate = new Date(`${date}T00:00:00.000Z`);
+  const [schedules, appointments, scheduleBlocks] = await Promise.all([
     prisma.professionalSchedule.findMany({ where: { professionalId, active: true } }),
     prisma.appointment.findMany({
       where: {
@@ -31,6 +32,13 @@ export async function GET(request: Request) {
           lte: new Date(`${date}T23:59:59`)
         }
       }
+    }),
+    prisma.scheduleBlock.findMany({
+      where: {
+        active: true,
+        date: blockDate,
+        OR: [{ professionalId: null }, { professionalId }]
+      }
     })
   ]);
 
@@ -38,7 +46,8 @@ export async function GET(request: Request) {
     date,
     serviceDurationMinutes: service.durationMinutes,
     schedules,
-    appointments
+    appointments,
+    scheduleBlocks
   });
 
   return NextResponse.json({

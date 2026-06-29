@@ -12,6 +12,12 @@ export type ExistingAppointment = {
   status: string;
 };
 
+export type ScheduleBlockWindow = {
+  startTime: string | null;
+  endTime: string | null;
+  active: boolean;
+};
+
 export type AvailableSlot = {
   startsAt: Date;
   endsAt: Date;
@@ -23,6 +29,7 @@ type CalculateAvailableSlotsInput = {
   serviceDurationMinutes: number;
   schedules: ScheduleWindow[];
   appointments: ExistingAppointment[];
+  scheduleBlocks?: ScheduleBlockWindow[];
   now?: Date;
 };
 
@@ -46,7 +53,7 @@ export function calculateAvailableSlots(input: CalculateAvailableSlotsInput) {
       const blocked = input.appointments.some((appointment) => {
         if (appointment.status === "CANCELLED") return false;
         return startsAt < appointment.endsAt && endsAt > appointment.startsAt;
-      });
+      }) || (input.scheduleBlocks ?? []).some((block) => isBlockedByScheduleBlock(input.date, startsAt, endsAt, block));
 
       if (!blocked && startsAt > now) {
         slots.push({ startsAt, endsAt, time: toTime(startsAt) });
@@ -63,10 +70,18 @@ export function parseLocalDateTime(date: string, time: string) {
   return new Date(`${date}T${time}:00`);
 }
 
+function isBlockedByScheduleBlock(date: string, startsAt: Date, endsAt: Date, block: ScheduleBlockWindow) {
+  if (!block.active) return false;
+  if (!block.startTime || !block.endTime) return true;
+
+  const blockStartsAt = parseLocalDateTime(date, block.startTime);
+  const blockEndsAt = parseLocalDateTime(date, block.endTime);
+  return startsAt < blockEndsAt && endsAt > blockStartsAt;
+}
+
 function toTime(date: Date) {
   return date.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit"
   });
 }
-

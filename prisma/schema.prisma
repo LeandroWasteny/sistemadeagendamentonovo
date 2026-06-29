@@ -38,37 +38,40 @@ model User {
 }
 
 model Service {
-  id              String        @id @default(cuid())
-  name            String
-  description     String
-  durationMinutes Int
-  priceCents      Int
-  promoPriceCents Int?
-  promoActive     Boolean       @default(false)
-  promoDiscountPercent Int       @default(0)
-  promoStartsAt   DateTime?
-  promoEndsAt     DateTime?
-  sortOrder       Int           @default(0)
-  active          Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  appointments    Appointment[]
-  professionals   ProfessionalService[]
+  id                   String                @id @default(cuid())
+  name                 String
+  description          String
+  durationMinutes      Int
+  priceCents           Int
+  promoPriceCents      Int?
+  promoActive          Boolean               @default(false)
+  promoDiscountPercent Int                   @default(0)
+  promoStartsAt        DateTime?
+  promoEndsAt          DateTime?
+  sortOrder            Int                   @default(0)
+  active               Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  appointments         Appointment[]
+  professionals        ProfessionalService[]
 
   @@index([active, sortOrder])
 }
 
 model Professional {
-  id             String                 @id @default(cuid())
-  name           String
-  phone          String
-  specialties    String
-  active         Boolean                @default(true)
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  schedules      ProfessionalSchedule[]
-  appointments   Appointment[]
-  services       ProfessionalService[]
+  id                String                 @id @default(cuid())
+  name              String
+  phone             String
+  specialties       String
+  photoUrl          String?
+  commissionPercent Int                    @default(0)
+  active            Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  schedules         ProfessionalSchedule[]
+  scheduleBlocks    ScheduleBlock[]
+  appointments      Appointment[]
+  services          ProfessionalService[]
 }
 
 model ProfessionalService {
@@ -84,40 +87,56 @@ model ProfessionalService {
 }
 
 model ProfessionalSchedule {
-  id               String       @id @default(cuid())
-  professionalId   String
-  dayOfWeek        Int
-  startTime        String
-  endTime          String
-  intervalMinutes  Int          @default(30)
-  active           Boolean      @default(true)
-  professional     Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  professionalId  String
+  dayOfWeek       Int
+  startTime       String
+  endTime         String
+  intervalMinutes Int          @default(30)
+  active          Boolean      @default(true)
+  professional    Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@unique([professionalId, dayOfWeek, startTime, endTime])
 }
 
+model ScheduleBlock {
+  id             String        @id @default(cuid())
+  professionalId String?
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  date           DateTime
+  startTime      String?
+  endTime        String?
+  reason         String
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([date, active])
+  @@index([professionalId, date, active])
+}
+
 model Appointment {
-  id             String            @id @default(cuid())
-  clientName     String
-  clientPhone    String
-  notes          String?
-  startsAt       DateTime
-  endsAt         DateTime
-  status         AppointmentStatus @default(PENDING)
-  priceCents     Int?
-  discountCents  Int               @default(0)
+  id              String            @id @default(cuid())
+  clientName      String
+  clientPhone     String
+  notes           String?
+  startsAt        DateTime
+  endsAt          DateTime
+  status          AppointmentStatus @default(PENDING)
+  priceCents      Int?
+  discountCents   Int               @default(0)
   finalPriceCents Int?
-  serviceId      String
-  professionalId String
-  couponId       String?
-  service        Service           @relation(fields: [serviceId], references: [id])
-  professional   Professional      @relation(fields: [professionalId], references: [id])
-  coupon         Coupon?           @relation(fields: [couponId], references: [id])
-  notifications  NotificationLog[]
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  serviceId       String
+  professionalId  String
+  couponId        String?
+  service         Service           @relation(fields: [serviceId], references: [id])
+  professional    Professional      @relation(fields: [professionalId], references: [id])
+  coupon          Coupon?           @relation(fields: [couponId], references: [id])
+  notifications   NotificationLog[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@index([professionalId, startsAt])
   @@index([couponId])

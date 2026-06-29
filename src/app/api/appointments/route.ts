@@ -45,7 +45,8 @@ export async function POST(request: Request) {
   const date = startsAt.toISOString().slice(0, 10);
   const couponCode = normalizeCouponCode(input.data.couponCode ?? "");
 
-  const [schedules, appointments] = await Promise.all([
+  const blockDate = new Date(`${date}T00:00:00.000Z`);
+  const [schedules, appointments, scheduleBlocks] = await Promise.all([
     prisma.professionalSchedule.findMany({ where: { professionalId: professional.id, active: true } }),
     prisma.appointment.findMany({
       where: {
@@ -55,6 +56,13 @@ export async function POST(request: Request) {
           lte: new Date(`${date}T23:59:59`)
         }
       }
+    }),
+    prisma.scheduleBlock.findMany({
+      where: {
+        active: true,
+        date: blockDate,
+        OR: [{ professionalId: null }, { professionalId: professional.id }]
+      }
     })
   ]);
 
@@ -62,7 +70,8 @@ export async function POST(request: Request) {
     date,
     serviceDurationMinutes: service.durationMinutes,
     schedules,
-    appointments
+    appointments,
+    scheduleBlocks
   }).some((slot) => slot.startsAt.getTime() === startsAt.getTime());
 
   if (!available) {

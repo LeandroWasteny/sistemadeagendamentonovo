@@ -126,12 +126,12 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
       )}
       <aside
         className={cn(
-          "relative z-40 border-b text-[var(--sidebar-text)] backdrop-blur [background:var(--sidebar-bg)] [box-shadow:0_16px_40px_var(--shadow-soft)] md:sticky md:top-0 md:flex md:h-screen md:shrink-0 md:flex-col md:border-b-0 md:border-r md:transition-[width] md:duration-200",
+          "relative z-40 border-b text-[var(--sidebar-text)] backdrop-blur [background:var(--sidebar-bg)] [box-shadow:0_16px_40px_var(--shadow-soft)] md:fixed md:inset-y-0 md:left-0 md:flex md:h-dvh md:max-h-dvh md:shrink-0 md:flex-col md:overflow-hidden md:border-b-0 md:border-r md:transition-[width] md:duration-200",
           "border-[var(--sidebar-border)]",
           collapsed ? "md:w-[76px]" : "md:w-[260px]"
         )}
       >
-      <div className="flex items-center justify-between gap-3 px-4 py-4 md:px-4 md:py-5">
+      <div className="flex items-center justify-between gap-3 px-4 py-4 md:shrink-0 md:px-4 md:py-5">
         <Link
           href="/admin"
           className={cn(
@@ -179,7 +179,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
         </div>
       </div>
 
-      <div className={cn("relative px-4 pb-3", collapsed && "hidden px-3 md:block")}>
+      <div className={cn("relative px-4 pb-3 md:shrink-0", collapsed && "hidden px-3 md:block")}>
         {!collapsed ? (
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -247,12 +247,12 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
       <nav
         id={navId}
         className={cn(
-          "px-3 pb-3 md:flex-1 md:overflow-y-auto",
+          "px-3 pb-3 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain",
           mobileOpen ? "block" : "hidden md:block"
         )}
         aria-label="Navegacao administrativa"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           {navGroups.map((group) => (
             <div key={group.label}>
               {!collapsed && (
@@ -295,7 +295,7 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
 
       <form
         action={logoutAction}
-        className={cn("px-3 pb-4", mobileOpen ? "block" : "hidden md:block")}
+        className={cn("px-3 pb-4 md:mt-auto md:shrink-0", mobileOpen ? "block" : "hidden md:block")}
       >
         <button
           className={cn(
@@ -310,6 +310,13 @@ export function AdminNavClient({ logoutAction }: AdminNavClientProps) {
         </button>
       </form>
     </aside>
+    <div
+      aria-hidden="true"
+      className={cn(
+        "hidden md:block md:shrink-0 md:transition-[width] md:duration-200",
+        collapsed ? "md:w-[76px]" : "md:w-[260px]"
+      )}
+    />
     </>
   );
 }
